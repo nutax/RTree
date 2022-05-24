@@ -22,11 +22,10 @@ class RTree{
 
     struct Polygon{
         Identity id;
-        Size size;
+        Size size = 0;
         Position vertex[MAX_VERTEX][DIM];
     };
 
-    private:
 
     struct Box{
         Position mins[DIM];
@@ -39,6 +38,7 @@ class RTree{
         Pointer child[ORDER];
     };
 
+    private:
     Pointer root;
     Pointer delta[ORDER];
     Pointer parents[21];
@@ -304,4 +304,12 @@ class RTree{
             bfs.pop();
         }
     }
+
+    Polygon* get_polygons() {
+        return polygons;
+    }
+    Node* get_nudes() {
+        return nodes;
+    }
 };
+
