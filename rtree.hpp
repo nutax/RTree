@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <queue>
 #include <iostream>
+#include <functional>
 
 #define MAX(a,b) ((a > b) ? a : b);
 #define MIN(a,b) ((a < b) ? a : b);
@@ -14,6 +15,8 @@ class RTree{
     static constexpr unsigned MAX_NODES = MAX_POLYGONS * ORDER;
 
     static constexpr unsigned POLYGON_ZONE = MAX_NODES;
+
+    static constexpr uint32_t DIRTY = UINT32_MAX;
 
     using Position = int32_t;
     using Pointer = uint32_t;
@@ -147,6 +150,7 @@ class RTree{
                 for(int k = 0; k<DIM; ++k){
                     size += MAX(obox[i].maxs[k], obox[j].maxs[k]) - MIN(obox[i].mins[k], obox[j].mins[k]);
                 }
+                size = get_delta(obox[i], obox[j]);
                 if(big_sz < size){
                     big_i = i;
                     big_j = j;
@@ -305,11 +309,28 @@ class RTree{
         }
     }
 
-    Polygon* get_polygons() {
-        return polygons;
+    void for_each_polygon(std::function<void(Polygon const&) f){
+        for(int i = 0; polygons[i].size > 0; ++i) {
+            if(polygons[i].size != DIRTY) f(polygons[i]);
+        }
     }
-    Node* get_nudes() {
-        return nodes;
+
+    void for_each_box(std::function<void(Box const&, int lvl) f){
+        std::queue<std::pair<Pointer, int>> bfs;
+        bfs.push(root, 0);
+        while(!bfs.empty()) {
+            Node const& node = get_node(bfs.front().first);
+            int const curr_lvl = bfs.front().second;
+            for(int i = 0; i<node.size; ++i) {
+                f(node.box[i], curr_lvl);
+            }
+            if(is_not_leaf(bfs.front())){
+                for(int i = 0; i<node.size; ++i) {
+                    bfs.push( std::make_pair(node.child[i], curr_lvl + 1) );
+                }
+            }
+            bfs.pop();
+        }
     }
 };
 
