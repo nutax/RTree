@@ -12,7 +12,13 @@ g++ -c main.cpp && g++ main.o -o sfml-app -lsfml-graphics -lsfml-window -lsfml-s
 
 #define carro auto
 
-RTree<3, 2, 1000, 70> r;
+#define ORDER 3
+#define DIM 2
+#define MAX_POLY 1000
+#define MAX_VERTEX 32
+#define MAX_KNN 16
+
+RTree<ORDER, DIM, MAX_POLY, MAX_VERTEX, MAX_KNN> r;
 
 int width = 900, height = 600;
 sf::RenderWindow window(sf::VideoMode(width, height), "SFML works!");

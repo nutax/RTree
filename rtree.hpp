@@ -1,14 +1,15 @@
 #include <stdint.h>
 #include <array>
 #include <algorithm>
-#include <queue>
 #include <iostream>
 #include <functional>
+#include "StaticQueue.hpp"
+#include "StaticPriorityQueue.hpp"
 
 #define MAX(a,b) ((a > b) ? a : b);
 #define MIN(a,b) ((a < b) ? a : b);
 
-template<unsigned ORDER, unsigned DIM, unsigned MAX_POLYGONS, unsigned MAX_VERTEX>
+template<unsigned ORDER, unsigned DIM, unsigned MAX_POLYGONS, unsigned MAX_VERTEX, unsigned MAX_KNN>
 class RTree{
     public:
 
@@ -58,7 +59,16 @@ class RTree{
 
     Size top_dirty_polygon;
     Pointer dirty_polygons[MAX_POLYGONS];
+
+    struct vBFS{Pointer node; int lvl;};
+    StaticQueue<vBFS, MAX_POLYGONS> bfs;
     
+    struct vKNN{Position distance; Identity id; Position point[DIM]; const bool operator<(vKNN const& other) const { return distance < other.distance; } };
+    StaticPriorityQueue<MAXHEAP, vKNN, MAX_KNN> knn;
+
+    struct vHBF{Position distance; Pointer node; const bool operator<(vHBF const& other) const { return distance < other.distance; } };
+    StaticPriorityQueue<MINHEAP, vHBF, MAX_KNN> hbf; // H best first
+
 
     Pointer create_node(){
         return dirty_nodes[top_dirty_node++];
@@ -286,10 +296,10 @@ class RTree{
     }
 
     void print(){
-        std::queue<Pointer> bfs;
-        bfs.push(root);
-        while(!bfs.empty()) {
-            Node const& node = get_node(bfs.front());
+        bfs.clear();
+        bfs.push({root, 0});
+        while(bfs.not_empty()) {
+            Node const& node = get_node(bfs.top().node);
             //std::cout << "{  ";
             for(int i = 0; i<node.size; ++i) {
                 std::cout << " R" << i << "( ";
@@ -300,9 +310,9 @@ class RTree{
             }
             //std::cout << " }";
             std::cout << "\n\n";
-            if(is_not_leaf(bfs.front())){
+            if(is_not_leaf(bfs.top())){
                 for(int i = 0; i<node.size; ++i) {
-                    bfs.push( node.child[i] );
+                    bfs.push( {node.child[i], 0} );
                 }
             }
             bfs.pop();
@@ -316,17 +326,17 @@ class RTree{
     }
 
     void for_each_box(std::function<void(Box const&, int lvl) f){
-        std::queue<std::pair<Pointer, int>> bfs;
-        bfs.push(root, 0);
-        while(!bfs.empty()) {
-            Node const& node = get_node(bfs.front().first);
-            int const curr_lvl = bfs.front().second;
+        bfs.clear();
+        bfs.push({root, 0});
+        while(bfs.not_empty()) {
+            Node const& node = get_node(bfs.top().node);
+            int const curr_lvl = bfs.top().lvl;
             for(int i = 0; i<node.size; ++i) {
                 f(node.box[i], curr_lvl);
             }
-            if(is_not_leaf(bfs.front())){
+            if(is_not_leaf(bfs.top())){
                 for(int i = 0; i<node.size; ++i) {
-                    bfs.push( std::make_pair(node.child[i], curr_lvl + 1) );
+                    bfs.push( {node.child[i], curr_lvl + 1} );
                 }
             }
             bfs.pop();
