@@ -84,8 +84,6 @@ void line_to_poly(Polygon const& polygon) {
     auto pos = sf::Mouse::getPosition(window);
     float min_x, min_y, min_hypot = 1e10;
     float min_x_a, min_y_a, min_hypot_a = 1e10;
-
-
     for (int i = 0; i < size; i++) {
         float current_hypot = hypot(points[i][0]-pos.x, points[i][1]-pos.y);
         if (min_hypot > current_hypot) {
@@ -276,7 +274,7 @@ int main(int argc, char **argv){
         }
         r.for_each_polygon(line_to_poly);
         r.for_each_polygon(draw_poly);
-        r.for_each_box(draw_box);
+        // r.for_each_box(draw_box);
 
         int radius = 2;
         sf::CircleShape *shape = new sf::CircleShape(radius);
