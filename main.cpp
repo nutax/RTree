@@ -2,13 +2,59 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/System.hpp>
 #include <array>
-#include <complex>
+#include <array>
 /*
-g++ -c main.cpp
-g++ main.o -o sfml-app -lsfml-graphics -lsfml-window -lsfml-system
-./sfml-app
+-----Distancia Entre 2 Poligonos-----
+        Grupo Gaviotas
 
-g++ -std=c++17 -c main.cpp && g++ main.o -o sfml-app -lsfml-graphics -lsfml-window -lsfml-system && ./sfml-app
+Idea principal:
+    Es de conocimiento general (en la clase) que hay un algoritmo que permite calcular la distancia entre 1 punto y 1 poligono que
+    utiliza la zona Berrospi y Pedro.
+    Nuestra idea es un poco costosa pero simple. Utilizar ese algorito punto-poligono con cada punto de uno de los poligonos a comparar
+    O sea, si se quiere saber la distancia entre un poligono A y uno B, entonces se hace el algoritmo punto-poligono con cada punto 
+    del poligono A hacia el poligono B y see escoje la minima distancia. Esto nos dará la minima distancia poligono-poligono, siempre y cuando
+    no la minima distancia de un poligino a otro se encuentre siempre de un vertice hacia una arísta o de una vertice a otro, o sea, nunca
+    de una arista a otra arista. Esto si se medita es lógico, sin embargo, tambien se puede demostrar matematicamente (Mario hizo algo 
+    así en el "adelanto" de esto).
+    Es inificiente (probablemente O(n*m) donde n es el numero de lados de un poligono, y m del otro), se podria hacer las siguientes mejoras:
+        Enonctrar la manera de descartar algunos puntos para no realizar la comparacion
+        Evitar el uso de funciones pesadas como, arcotangente, etc
+        Cosas raras y avanzadas de C++21
+
+
+Requisitos:
+    tener isntalado SFML
+
+Constraints: 
+    El polígono tiene que ser convexo
+    Lo que se dibuje tiene que tener como mínimo 3 lados
+
+Para ejecutar:
+    Comandos: 
+        g++ -c main.cpp
+        g++ main.o -o sfml-app -lsfml-graphics -lsfml-window -lsfml-system
+        ./sfml-app
+
+    O, todo junto:
+        g++ -std=c++17 -c main.cpp && g++ main.o -o sfml-app -lsfml-graphics -lsfml-window -lsfml-system && ./sfml-app
+
+Uso:
+    Se pueden dibujar puntos, utilizando el mouse.
+
+    Una vez se tengan los puntos del poligono deseado, se presiona "ENTER", par crear este poligono
+
+    Se repite los ultimos pasos para crear un 2do poligono
+
+    Una vez creado el 2do, ya se mostrará la distancia entre estos 2.
+
+    Se pueden utilizar las flechas (UP, DOWN, LEFT, RIGHT) para mover el último poligono creado y 
+    ver como se actualiza la distancia
+
+    Se pueden crear más poligonos y siempre se dibujar la distancia entre todos, sin embargo, 
+    solo se podra controlar con las flechas el último poligono creado. 
+
+Gracias 
+https://image-aws-us-west-2.vsco.co/77c290/22229248/5f7fc521822a673d348d43db/1136x883/vsco5f7fc523adb3a.jpg
 */
 
 #define carro auto
@@ -78,67 +124,81 @@ float distance(float aX,float  aY,float  bX,float  bY) {
     return hypot(aX - bX, aY - bY);
 }
 
-void line_to_poly(Polygon const& polygon) {
-    int size = polygon.size;
-    const auto& points = polygon.vertex;
-    auto pos = sf::Mouse::getPosition(window);
-    float min_x, min_y, min_hypot = 1e10;
-    float min_x_a, min_y_a, min_hypot_a = 1e10;
+sf::Vector2f line_to_poly(std::vector<sf::Vector2f> points, sf::Vector2f pos) {
+    int size = points.size();
+    
+    float min_hypot = 1e10;
+    int min_idx;
+    sf::Vector2f left, right, min;
     for (int i = 0; i < size; i++) {
-        float current_hypot = hypot(points[i][0]-pos.x, points[i][1]-pos.y);
+        float current_hypot = hypot(points[i].x-pos.x, points[i].y-pos.y);
         if (min_hypot > current_hypot) {
-            if (min_hypot_a > min_hypot) {
-                min_hypot_a = min_hypot;
-                min_x_a = min_x;
-                min_y_a = min_y;
-            }
             min_hypot = current_hypot;
-            min_x = points[i][0];
-            min_y = points[i][1];
-        } else if (min_hypot_a > current_hypot) {
-                min_hypot_a = current_hypot;
-                min_x_a = points[i][0];
-                min_y_a = points[i][1];
-            }
+            min = points[i];
+            min_idx = i;
+        }
     }
 
-    sf::Vector2f ab = { min_x - min_x_a, min_y - min_y_a };
-    sf::Vector2f cb = { min_x - pos.x, min_y - pos.y };
+    left = points[(min_idx+1)%size];
+    right = points[(min_idx > 0 ? min_idx-1 : size-1)];
+    
+    sf::Vector2f ab = { min.x - left.x , min.y - left.y };
+    sf::Vector2f cb = { min.x - pos.x   , min.y - pos.y };
 
-    float dot = (ab.x * cb.x + ab.y * cb.y); // dot product
-    float cross = (ab.x * cb.y - ab.y * cb.x); // cross product
+    float dot = (ab.x * cb.x + ab.y * cb.y);
+    float cross = (ab.x * cb.y - ab.y * cb.x);
 
-    float alpha = atan2(cross, dot);
+    float theta1 = atan2(cross, dot);
 
-    int theta = floor(alpha * 180. / M_PI + 0.5);
-    if (abs(theta) < 90) {
-        float m =  (min_y-min_y_a)/(min_x-min_x_a);
-        float c = (min_x*min_y_a-min_x_a*min_y)/(min_x-min_x_a);
+    ab = { min.x - right.x , min.y - right.y };
+    cb = { min.x - pos.x   , min.y - pos.y };
+
+    dot = (ab.x * cb.x + ab.y * cb.y);
+    cross = (ab.x * cb.y - ab.y * cb.x);
+
+    float theta2 = atan2(cross, dot);
+    sf::Vector2f pointA;
+    sf::Vector2f pointB;
+    if (abs(theta1) < M_PI/2) 
+    {
+        float m =  (min.y-left.y)/(min.x-left.x);
+        float c = (min.x*left.y-left.x*min.y)/(min.x-left.x);
         float d = (pos.x + (pos.y - c)*m)/(1 + m*m);
         float px = 2*d - pos.x;
         float py = 2*d*m - pos.y + 2*c;
         py = (py + (pos.y))/2;
         px = (px + (pos.x))/2;
-        const sf::Vertex line_a[] = {
-                sf::Vertex(sf::Vector2f(px, py)),
-                sf::Vertex(sf::Vector2f(pos.x, pos.y))
-            };
-        window.draw(line_a, 2, sf::Lines);
+        pointA = {px, py};
+    } 
+    else 
+    {
+        pointA = min;
+    }
+
+    if (abs(theta2) < M_PI/2) 
+    {
+        float m =  (min.y-right.y)/(min.x-right.x);
+        float c = (min.x*right.y-right.x*min.y)/(min.x-right.x);
+        float d = (pos.x + (pos.y - c)*m)/(1 + m*m);
+        float px = 2*d - pos.x;
+        float py = 2*d*m - pos.y + 2*c;
+        py = (py + (pos.y))/2;
+        px = (px + (pos.x))/2;
+        pointB = {px, py};
+    } 
+    else 
+    {
+        pointB = min;
+    }
+    if (distance(pointA.x, pointA.y, pos.x, pos.y) < distance(pointB.x, pointB.y, pos.x, pos.y)) {
+        return pointA;
     } else {
-        const sf::Vertex line_a[] = {
-                sf::Vertex(sf::Vector2f(min_x, min_y)),
-                sf::Vertex(sf::Vector2f(pos.x, pos.y))
-            };
-        window.draw(line_a, 2, sf::Lines);
-
-    };
-
+        return pointB;
+    }
 }
 
-// template<typename Polygon>
-void draw_poly(Polygon const& polygon) {
-    int size = polygon.size;
-    const auto& points = polygon.vertex;
+void draw_poly(std::vector<sf::Vector2f> points) {
+    int size = points.size();
     if (size < 3) {
         throw("Ga");
     }
@@ -147,25 +207,25 @@ void draw_poly(Polygon const& polygon) {
     sf::Vertex b;
     for (int i = 0; i < size-1; i++) {
         const sf::Vertex line[] = {
-            sf::Vertex(sf::Vector2f(points[i][0], points[i][1])),
-            sf::Vertex(sf::Vector2f(points[i+1][0], points[i+1][1]))
+            sf::Vertex(sf::Vector2f(points[i].x, points[i].y)),
+            sf::Vertex(sf::Vector2f(points[i+1].x, points[i+1].y))
         };
         int radius = 2;
         sf::CircleShape shape(2);
-        shape.setPosition(sf::Vector2f(points[i][0]-radius, points[i][1]-radius));
+        shape.setPosition(sf::Vector2f(points[i].x-radius, points[i].y-radius));
         window.draw(line, 2, sf::Lines);
         window.draw(shape);
     }
 
     sf::Vertex line[] = {
-        sf::Vertex(sf::Vector2f(points[size-1][0], points[size-1][1])),
-        sf::Vertex(sf::Vector2f(points[0][0], points[0][1]))
+        sf::Vertex(sf::Vector2f(points[size-1].x, points[size-1].y)),
+        sf::Vertex(sf::Vector2f(points[0].x, points[0].y))
     };
     
 
     int radius = 2;
     sf::CircleShape shape(2);
-    shape.setPosition(sf::Vector2f(points[size-1][0]-radius, points[size-1][1]-radius));
+    shape.setPosition(sf::Vector2f(points[size-1].x-radius, points[size-1].y-radius));
     window.draw(line, 2, sf::Lines);
     window.draw(shape);
 }
@@ -218,9 +278,8 @@ int main(int argc, char **argv){
     // r.insert({7, 3, { {180,20},   {180,40},     {200,20} }});
     r.print();
 
-
-
     std::vector<sf::Shape*> points;
+    std::vector<std::vector<sf::Vector2f>> polys;
 
     while (window.isOpen())
     {
@@ -242,6 +301,9 @@ int main(int argc, char **argv){
                     shape->setFillColor(sf::Color(250, 250, 250));
                     points.push_back(shape);
                 }
+
+                
+
                 case sf::Event::KeyReleased:
                 {
                     switch (event.key.code)
@@ -249,20 +311,51 @@ int main(int argc, char **argv){
                         case sf::Keyboard::Enter:
                         {
                             std::cout << "Enter\n";
-                            decltype(r)::Polygon poly;
-                            poly.size = points.size();
+                            std::vector<sf::Vector2f> shape;                            
                             for(int i = 0; i < points.size(); i++)
                             {
                                 sf::Vector2f pos = points[i]->getPosition();
-                                poly.vertex[i][0] = pos.x;
-                                poly.vertex[i][1] = pos.y;
+                                shape.push_back(pos);
                             }
-
-                            r.insert(poly);
-                            r.print();
+                            polys.push_back(shape);
+                            // r.insert(poly);
+                            // r.print();
                             points.clear();
                         }
                     }
+                }
+
+                case sf::Event::KeyPressed:
+                {
+                    if (event.key.code == sf::Keyboard::Left)
+                    {
+                        auto shape = &polys.back();
+                        for (int i = 0; i < shape->size(); i++) {
+                            shape->at(i) = {shape->at(i).x-2, shape->at(i).y};
+                        }
+                    }
+                    if (event.key.code == sf::Keyboard::Right)
+                    {
+                        auto shape = &polys.back();
+                        for (int i = 0; i < shape->size(); i++) {
+                            shape->at(i) = {shape->at(i).x+2, shape->at(i).y};
+                        }
+                    }
+                    if (event.key.code == sf::Keyboard::Up)
+                    {
+                        auto shape = &polys.back();
+                        for (int i = 0; i < shape->size(); i++) {
+                            shape->at(i) = {shape->at(i).x, shape->at(i).y-2};
+                        }
+                    }
+                    if (event.key.code == sf::Keyboard::Down)
+                    {
+                        auto shape = &polys.back();
+                        for (int i = 0; i < shape->size(); i++) {
+                            shape->at(i) = {shape->at(i).x, shape->at(i).y+2};
+                        }
+                    }
+                    
                 }
             }
         }
@@ -272,8 +365,36 @@ int main(int argc, char **argv){
         {
             window.draw(**it);
         }
-        r.for_each_polygon(line_to_poly);
-        r.for_each_polygon(draw_poly);
+        // r.for_each_polygon(line_to_poly);
+
+        for (int i = 0; i < polys.size(); i++) {
+            auto shape_a = polys[i];
+            sf::Vector2f  min_vertex_a = {1e5, 1e6};
+            sf::Vector2f  min_vertex_b = {1e10, 1e10};
+
+            for (int j = i+1; j < polys.size(); j++) {
+
+                float min_distance = 1e10;
+                auto shape_b = polys[j];
+
+                for (auto vertex: shape_b) {
+                    auto current_vertex = line_to_poly(shape_a, vertex);
+                    float current_distance = distance(current_vertex.x, current_vertex.y, vertex.x, vertex.y);
+                    if (min_distance > current_distance) {
+                        min_distance = current_distance;
+                        min_vertex_a = current_vertex;
+                        min_vertex_b = vertex;
+                    }
+                }
+            }
+            const sf::Vertex line_a[] = {
+                    sf::Vertex(sf::Vector2f(min_vertex_a.x, min_vertex_a.y)),
+                    sf::Vertex(sf::Vector2f(min_vertex_b.x, min_vertex_b.y))
+                };
+            window.draw(line_a, 2, sf::Lines);
+            draw_poly(shape_a);
+        }
+        // r.for_each_polygon(draw_poly);
         // r.for_each_box(draw_box);
 
         int radius = 2;
