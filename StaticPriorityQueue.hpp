@@ -22,7 +22,7 @@ class StaticPriorityQueue{
                 arr[i>>1] = aux;
                 i = i>>1;
             }
-        }else{
+        } else {
             while (i != 0 && arr[i>>1] < arr[i]){
                 auto aux = arr[i];
                 arr[i] = arr[i>>1];

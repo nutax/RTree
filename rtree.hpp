@@ -3,11 +3,14 @@
 #include <algorithm>
 #include <iostream>
 #include <functional>
+#include <math.h>
 #include "StaticQueue.hpp"
 #include "StaticPriorityQueue.hpp"
 
+
 #define MAX(a,b) ((a > b) ? a : b);
 #define MIN(a,b) ((a < b) ? a : b);
+#define MAX_HEIGHT 21
 
 template<unsigned ORDER, unsigned DIM, unsigned MAX_POLYGONS, unsigned MAX_VERTEX, unsigned MAX_KNN>
 class RTree{
@@ -45,11 +48,12 @@ class RTree{
     private:
     Pointer root;
     Pointer delta[ORDER];
-    Pointer parents[21];
-    int childs[21];
+    Pointer parents[MAX_HEIGHT];
+    int childs[MAX_HEIGHT];
     Box obox[ORDER+1];
     Pointer ochild[ORDER+1];
     int oidx[ORDER+1];
+    int size;
 
     Node nodes[MAX_NODES];
     Polygon polygons[MAX_POLYGONS];
@@ -244,6 +248,7 @@ class RTree{
     }
 
     void insert(Polygon const& polygon){
+        size++;
         Box box = get_mbb(polygon);
         Pointer child = create_polygon(polygon);
         
@@ -310,7 +315,7 @@ class RTree{
             }
             //std::cout << " }";
             std::cout << "\n\n";
-            if(is_not_leaf(bfs.top())){
+            if(is_not_leaf(bfs.top().node)){
                 for(int i = 0; i<node.size; ++i) {
                     bfs.push( {node.child[i], 0} );
                 }
@@ -319,22 +324,23 @@ class RTree{
         }
     }
 
-    void for_each_polygon(std::function<void(Polygon const&) f){
+    void for_each_polygon(std::function<void(Polygon const&)> f){
         for(int i = 0; polygons[i].size > 0; ++i) {
             if(polygons[i].size != DIRTY) f(polygons[i]);
         }
     }
 
-    void for_each_box(std::function<void(Box const&, int lvl) f){
+    void for_each_box(std::function<void(Box const&, int, int)> f){
+        int height =  ceil(log2(size+1)/log2(ORDER)) + 1;
         bfs.clear();
         bfs.push({root, 0});
         while(bfs.not_empty()) {
             Node const& node = get_node(bfs.top().node);
             int const curr_lvl = bfs.top().lvl;
             for(int i = 0; i<node.size; ++i) {
-                f(node.box[i], curr_lvl);
+                f(node.box[i], curr_lvl, height);
             }
-            if(is_not_leaf(bfs.top())){
+            if(is_not_leaf(bfs.top().node)){
                 for(int i = 0; i<node.size; ++i) {
                     bfs.push( {node.child[i], curr_lvl + 1} );
                 }
