@@ -54,6 +54,7 @@ class RTree{
     Pointer ochild[ORDER+1];
     int oidx[ORDER+1];
     int size;
+    inline static const float log2ORDER = log2(ORDER);
 
     Node nodes[MAX_NODES];
     Polygon polygons[MAX_POLYGONS];
@@ -67,11 +68,11 @@ class RTree{
     struct vBFS{Pointer node; int lvl;};
     StaticQueue<vBFS, MAX_POLYGONS> bfs;
     
-    struct vKNN{Position distance; Identity id; Position point[DIM]; const bool operator<(vKNN const& other) const { return distance < other.distance; } };
+    struct vKNN{Position distance; Pointer polygon; Position point[DIM]; const bool operator<(vKNN const& other) const { return distance < other.distance; } };
     StaticPriorityQueue<MAXHEAP, vKNN, MAX_KNN> knn;
 
     struct vHBF{Position distance; Pointer node; const bool operator<(vHBF const& other) const { return distance < other.distance; } };
-    StaticPriorityQueue<MINHEAP, vHBF, MAX_KNN> hbf; // H best first
+    StaticPriorityQueue<MINHEAP, vHBF, MAX_HEIGHT> hbf; // H best first
 
 
     Pointer create_node(){
@@ -235,6 +236,19 @@ class RTree{
 
     }
 
+
+    vHBF get_dist2box(Box const& box){
+        vHBF result;
+
+        return result;
+    }
+
+    vKNN get_dist2poly(Pointer polygon){
+        vKNN result;
+
+        return result;
+    }
+
     public:
     RTree(){
         top_dirty_node = 0;
@@ -324,23 +338,24 @@ class RTree{
         }
     }
 
-    void for_each_polygon(std::function<void(Polygon const&)> f){
+    void for_each_polygon(std::function<void(Polygon const&)> const& f){
         for(int i = 0; polygons[i].size > 0; ++i) {
             if(polygons[i].size != DIRTY) f(polygons[i]);
         }
     }
 
-    void for_each_box(std::function<void(Box const&, int, int)> f){
-        int height =  ceil(log2(size+1)/log2(ORDER)) + 1;
+    void for_each_box(std::function<void(Box const&, int, int)> const& f){
+        int const height =  ceil(log2(size+1)/log2ORDER) + 1;
         bfs.clear();
         bfs.push({root, 0});
         while(bfs.not_empty()) {
-            Node const& node = get_node(bfs.top().node);
-            int const curr_lvl = bfs.top().lvl;
+            auto const& element = bfs.top();
+            Node const& node = get_node(element.node);
+            int const curr_lvl = element.lvl;
             for(int i = 0; i<node.size; ++i) {
                 f(node.box[i], curr_lvl, height);
             }
-            if(is_not_leaf(bfs.top().node)){
+            if(is_not_leaf(element.node)){
                 for(int i = 0; i<node.size; ++i) {
                     bfs.push( {node.child[i], curr_lvl + 1} );
                 }
@@ -348,5 +363,39 @@ class RTree{
             bfs.pop();
         }
     }
+
+    void for_each_nearest(int k, std::array<Position, DIM> const& pos, std::function<void(Polygon const&)> const& f){
+        knn.init(k, {INT32_MAX});
+        hbf.clear();
+
+        hbf.push({0, root});
+        while(hbf.not_empty()){
+            auto const& element = hbf.top();
+            auto const& dist2box = element.distance;
+            auto const& worstbest =  knn.top().distance;
+            if(dist2box < worstbest){
+                Node const& node = get_node(element.node);
+                if(is_not_leaf(element.node)){
+                    for(int i = 0; i<node.size; ++i) {
+                        auto const& candidate = get_dist2box(node.box[i]);
+                        if(candidate.distance < worstbest){
+                            hfs.push( {candidate, node.box[i]} );
+                        }
+                    }
+                }else{
+                    for(int i = 0; i<node.size; ++i) {
+                        auto const& candidate = get_dist2poly(node.child[i]);
+                        if(candidate.distance < knn.top().distance){
+                            knn.push( candidate );
+                        }
+                    }
+                }
+            }
+            hbf.pop();
+        }
+
+
+    }
+
 };
 
