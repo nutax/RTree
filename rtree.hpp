@@ -26,11 +26,12 @@ class RTree{
     using Pointer = uint32_t;
     using Size = uint32_t;
     using Identity = uint32_t;
+    using Point = std::array<Position, DIM>;
 
     struct Polygon{
         Identity id;
         Size size = 0;
-        Position vertex[MAX_VERTEX][DIM];
+        Point vertex[MAX_VERTEX];
     };
 
 
@@ -65,37 +66,37 @@ class RTree{
     Size top_dirty_polygon;
     Pointer dirty_polygons[MAX_POLYGONS];
 
-    struct vBFS{Pointer node; int lvl;};
+    struct vBFS{Pointer node_ptr; int lvl;};
     StaticQueue<vBFS, MAX_POLYGONS> bfs;
     
-    struct vKNN{Position distance; Pointer polygon; Position point[DIM]; const bool operator<(vKNN const& other) const { return distance < other.distance; } };
+    struct vKNN{Position distance; Pointer polygon_ptr; Point point; const bool operator<(vKNN const& other) const { return distance < other.distance; } };
     StaticPriorityQueue<MAXHEAP, vKNN, MAX_KNN> knn;
 
-    struct vHBF{Position distance; Pointer node; const bool operator<(vHBF const& other) const { return distance < other.distance; } };
-    StaticPriorityQueue<MINHEAP, vHBF, MAX_HEIGHT> hbf; // H best first
+    struct vHBF{Position distance; Pointer node_ptr; const bool operator<(vHBF const& other) const { return distance < other.distance; } };
+    StaticPriorityQueue<MINHEAP, vHBF, MAX_HEIGHT*ORDER + 1> hbf; // H best first
 
 
     Pointer create_node(){
         return dirty_nodes[top_dirty_node++];
     }
-    void destroy_node(Pointer node){
-        dirty_nodes[--top_dirty_node] = node;
+    void destroy_node(Pointer node_ptr){
+        dirty_nodes[--top_dirty_node] = node_ptr;
     }
     Pointer create_polygon(Polygon const& polygon){
         polygons[dirty_nodes[top_dirty_polygon]] = polygon;
         return dirty_nodes[top_dirty_polygon++] + POLYGON_ZONE;
     }
-    void destroy_polygon(Pointer polygon){
-        dirty_nodes[--top_dirty_polygon] = polygon;
+    void destroy_polygon(Pointer polygon_ptr){
+        dirty_nodes[--top_dirty_polygon] = polygon_ptr;
     }
-    bool is_not_leaf(Pointer node){
-        return nodes[node].child[0] < POLYGON_ZONE;
+    bool is_not_leaf(Pointer node_ptr){
+        return nodes[node_ptr].child[0] < POLYGON_ZONE;
     }
-    Node & get_node(Pointer node){
-        return nodes[node]; 
+    Node & get_node(Pointer node_ptr){
+        return nodes[node_ptr]; 
     }
-    Polygon & get_polygon(Pointer polygon){
-        return polygons[POLYGON_ZONE - polygon]; 
+    Polygon & get_polygon(Pointer polygon_ptr){
+        return polygons[POLYGON_ZONE - polygon_ptr]; 
     }
     Box get_mbb(Polygon const& polygon){
         Box box;
@@ -237,16 +238,23 @@ class RTree{
     }
 
 
-    vHBF get_dist2box(Box const& box){
-        vHBF result;
-
-        return result;
+    vHBF get_neighbor_box(Point const& point, Pointer node_ptr, int i){
+        Node const& node = get_node(node_ptr);
+        Box const& box = node.box[i];
+        Position distance = 0;
+        for(int j = 0; j<DIM; ++j){
+            Position const diff =   ( point[j] < box.mins[j] ) ? box.mins[j] - point[j] : 
+                                    ( point[j] > box.maxs[j] ) ? point[j] - box.maxs[j] : 0;
+            distance += diff*diff;
+        }
+        return {distance, node.child[i]};
     }
 
-    vKNN get_dist2poly(Pointer polygon){
-        vKNN result;
+    vKNN get_neighbor_poly(Point const& point, Pointer polygon_ptr){
+        
+        
 
-        return result;
+        return {};
     }
 
     public:
@@ -318,7 +326,8 @@ class RTree{
         bfs.clear();
         bfs.push({root, 0});
         while(bfs.not_empty()) {
-            Node const& node = get_node(bfs.top().node);
+            auto const& top = bfs.top();
+            Node const& node = get_node(top.node_ptr);
             //std::cout << "{  ";
             for(int i = 0; i<node.size; ++i) {
                 std::cout << " R" << i << "( ";
@@ -329,7 +338,7 @@ class RTree{
             }
             //std::cout << " }";
             std::cout << "\n\n";
-            if(is_not_leaf(bfs.top().node)){
+            if(is_not_leaf(top.node_ptr)){
                 for(int i = 0; i<node.size; ++i) {
                     bfs.push( {node.child[i], 0} );
                 }
@@ -349,13 +358,13 @@ class RTree{
         bfs.clear();
         bfs.push({root, 0});
         while(bfs.not_empty()) {
-            auto const& element = bfs.top();
-            Node const& node = get_node(element.node);
-            int const curr_lvl = element.lvl;
+            auto const& top = bfs.top();
+            Node const& node = get_node(top.node_ptr);
+            int const curr_lvl = top.lvl;
             for(int i = 0; i<node.size; ++i) {
                 f(node.box[i], curr_lvl, height);
             }
-            if(is_not_leaf(element.node)){
+            if(is_not_leaf(top.node_ptr)){
                 for(int i = 0; i<node.size; ++i) {
                     bfs.push( {node.child[i], curr_lvl + 1} );
                 }
@@ -364,29 +373,33 @@ class RTree{
         }
     }
 
-    void for_each_nearest(int k, std::array<Position, DIM> const& pos, std::function<void(Polygon const&)> const& f){
+    void for_each_nearest(int k, Point const& point, std::function<void(Polygon const&, Point const&, int distance)> const& f){
         knn.init(k, {INT32_MAX});
         hbf.clear();
 
         hbf.push({0, root});
         while(hbf.not_empty()){
-            auto const& element = hbf.top();
-            auto const& dist2box = element.distance;
+            auto const& top = hbf.top();
+            auto const& dist2box = top.distance;
             auto const& worstbest =  knn.top().distance;
             if(dist2box < worstbest){
-                Node const& node = get_node(element.node);
-                if(is_not_leaf(element.node)){
+                Node const& node = get_node(top.node_ptr);
+                if(is_not_leaf(top.node_ptr)){
                     for(int i = 0; i<node.size; ++i) {
-                        auto const& candidate = get_dist2box(node.box[i]);
-                        if(candidate.distance < worstbest){
-                            hfs.push( {candidate, node.box[i]} );
+                        auto const neighbor_box = get_neighbor_box(point, top.node_ptr, i);
+                        if(neighbor_box.distance < worstbest){
+                            hfs.push( neighbor_box );
                         }
                     }
                 }else{
                     for(int i = 0; i<node.size; ++i) {
-                        auto const& candidate = get_dist2poly(node.child[i]);
-                        if(candidate.distance < knn.top().distance){
-                            knn.push( candidate );
+                        auto const& new_worstbest =  knn.top().distance;
+                        auto const neighbor_box = get_neighbor_box(point, top.node_ptr, i);
+                        if(neighbor_box.distance < new_worstbest){
+                            auto const neighbor = get_neighbor_poly(point, neighbor_box.node_ptr);
+                            if(neighbor.distance < new_worstbest){
+                                knn.push( neighbor );
+                            }
                         }
                     }
                 }
@@ -394,6 +407,13 @@ class RTree{
             hbf.pop();
         }
 
+        auto const* const neighbors = knn.data();
+
+        for(int i = 0; i<k; ++i){
+            auto const& neighbor = neighbors[i];
+            if(neighbor.distance == INT32_MAX) continue;
+            f(get_polygon(neighbor.polygon_ptr), neighbor.point, neighbor.distance);
+        }
 
     }
 

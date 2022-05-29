@@ -65,5 +65,6 @@ class StaticPriorityQueue{
     bool not_empty() const {return _size != 0; }
     unsigned size() const { return _size; }
     void clear() { _size = 0; }
+    T const* const data() const { return arr; };
 
 };
