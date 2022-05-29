@@ -250,11 +250,26 @@ class RTree{
         return {distance, node.child[i]};
     }
 
-    vKNN get_neighbor_poly(Point const& point, Pointer polygon_ptr){
-        
-        
-
-        return {};
+    vKNN get_neighbor_poly(Point const& point, Pointer polygon_ptr, Point const& point, Pointer node_ptr, int i){
+        // Temporal: distance to mmb
+        Node const& node = get_node(node_ptr);
+        Box const& box = node.box[i];
+        Position distance = 0;
+        Point polygon_point;
+        for(int j = 0; j<DIM; ++j){
+            if(point[j] < box.mins[j]){
+                polygon_point[j] = box.mins[j];
+                Position const diff =  box.mins[j] - point[j];
+                distance += diff*diff;
+            }else if(point[j] > box.maxs[j]){
+                polygon_point[j] = box.maxs[j];
+                Position const diff = point[j] - box.maxs[j];
+                distance += diff*diff;
+            }else{
+                polygon_point[j] = point[j];
+            }
+        }
+        return {distance, polygon_ptr, polygon_point};
     }
 
     public:
@@ -396,7 +411,7 @@ class RTree{
                         auto const& new_worstbest =  knn.top().distance;
                         auto const neighbor_box = get_neighbor_box(point, top.node_ptr, i);
                         if(neighbor_box.distance < new_worstbest){
-                            auto const neighbor = get_neighbor_poly(point, neighbor_box.node_ptr);
+                            auto const neighbor = get_neighbor_poly(point, neighbor_box.node_ptr, top.node_ptr, i);
                             if(neighbor.distance < new_worstbest){
                                 knn.push( neighbor );
                             }

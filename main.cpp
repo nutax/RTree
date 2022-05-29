@@ -83,7 +83,7 @@ void line_to_poly(Polygon const& polygon) {
     const auto& points = polygon.vertex;
     auto pos = sf::Mouse::getPosition(window);
     float min_x, min_y, min_hypot = 1e10;
-    float min_x_a, min_y_a, min_hypot_a = 1e10;
+    float min_x_a, min_y_a, min_hypot_a = 1e10; 
     for (int i = 0; i < size; i++) {
         float current_hypot = hypot(points[i][0]-pos.x, points[i][1]-pos.y);
         if (min_hypot > current_hypot) {
