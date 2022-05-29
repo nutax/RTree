@@ -96,7 +96,7 @@ class RTree{
         return nodes[node_ptr]; 
     }
     Polygon & get_polygon(Pointer polygon_ptr){
-        return polygons[POLYGON_ZONE - polygon_ptr]; 
+        return polygons[polygon_ptr - POLYGON_ZONE]; 
     }
     Box get_mbb(Polygon const& polygon){
         Box box;
@@ -250,7 +250,8 @@ class RTree{
         return {distance, node.child[i]};
     }
 
-    vKNN get_neighbor_poly(Point const& point, Pointer polygon_ptr, Point const& point, Pointer node_ptr, int i){
+
+    vKNN get_neighbor_poly(Point const& point, Pointer polygon_ptr, Pointer node_ptr, int i){
         // Temporal: distance to mmb
         Node const& node = get_node(node_ptr);
         Box const& box = node.box[i];
@@ -271,6 +272,8 @@ class RTree{
         }
         return {distance, polygon_ptr, polygon_point};
     }
+
+
 
     public:
     RTree(){
@@ -388,13 +391,14 @@ class RTree{
         }
     }
 
-    void for_each_nearest(int k, Point const& point, std::function<void(Polygon const&, Point const&, int distance)> const& f){
+    void for_each_nearest(int k, Point const& point, std::function<void(Polygon const&, Point const&, Point const&, int distance)> const& f){
         knn.init(k, {INT32_MAX});
         hbf.clear();
 
         hbf.push({0, root});
         while(hbf.not_empty()){
-            auto const& top = hbf.top();
+            vHBF top = hbf.top();
+            hbf.pop();
             auto const& dist2box = top.distance;
             auto const& worstbest =  knn.top().distance;
             if(dist2box < worstbest){
@@ -403,7 +407,7 @@ class RTree{
                     for(int i = 0; i<node.size; ++i) {
                         auto const neighbor_box = get_neighbor_box(point, top.node_ptr, i);
                         if(neighbor_box.distance < worstbest){
-                            hfs.push( neighbor_box );
+                            hbf.push( neighbor_box );
                         }
                     }
                 }else{
@@ -411,26 +415,32 @@ class RTree{
                         auto const& new_worstbest =  knn.top().distance;
                         auto const neighbor_box = get_neighbor_box(point, top.node_ptr, i);
                         if(neighbor_box.distance < new_worstbest){
-                            auto const neighbor = get_neighbor_poly(point, neighbor_box.node_ptr, top.node_ptr, i);
+                            auto const neighbor = get_neighbor_poly(point, node.child[i], top.node_ptr, i);
                             if(neighbor.distance < new_worstbest){
+                                knn.pop();
                                 knn.push( neighbor );
                             }
                         }
                     }
                 }
             }
-            hbf.pop();
+            
         }
+        
 
         auto const* const neighbors = knn.data();
 
         for(int i = 0; i<k; ++i){
             auto const& neighbor = neighbors[i];
             if(neighbor.distance == INT32_MAX) continue;
-            f(get_polygon(neighbor.polygon_ptr), neighbor.point, neighbor.distance);
+            
+            f(get_polygon(neighbor.polygon_ptr), point, neighbor.point, neighbor.distance);
         }
 
+
     }
+
+    int get_size() {return size;}
 
 };
 

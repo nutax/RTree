@@ -8,7 +8,7 @@ g++ -c main.cpp
 g++ main.o -o sfml-app -lsfml-graphics -lsfml-window -lsfml-system
 ./sfml-app
 
-g++ -std=c++17 -c main.cpp && g++ main.o -o sfml-app -lsfml-graphics -lsfml-window -lsfml-system && ./sfml-app
+g++ -std=c++17 -g -c main.cpp &&  g++ -g main.o -o sfml-app -lsfml-graphics -lsfml-window -lsfml-system && ./sfml-app
 */
 
 #define carro auto
@@ -21,9 +21,12 @@ g++ -std=c++17 -c main.cpp && g++ main.o -o sfml-app -lsfml-graphics -lsfml-wind
 
 RTree<ORDER, DIM, MAX_POLY, MAX_VERTEX, MAX_KNN> r;
 using Polygon = decltype(r)::Polygon;
+using Point = decltype(r)::Point;
 using Box = decltype(r)::Box;
 
 int width = 900, height = 600;
+int variable = 0;
+
 sf::RenderWindow window(sf::VideoMode(width, height), "SFML works!");
 
 sf::Color colors[] = {
@@ -35,12 +38,11 @@ sf::Color colors[] = {
 };
 
 
-// template<typename Box>
 int h = 1;
 
 void draw_box(const Box& box, int lvl, int height) {
     sf::Color const& color = colors[lvl%5];
-    int offset = (lvl < height)*3*(height - lvl);
+    int offset = (lvl < height)*2*(height - lvl);
 
     auto aX = box.mins[0]-(offset);
     auto aY = box.mins[1]-(offset);
@@ -105,8 +107,8 @@ void line_to_poly(Polygon const& polygon) {
     sf::Vector2f ab = { min_x - min_x_a, min_y - min_y_a };
     sf::Vector2f cb = { min_x - pos.x, min_y - pos.y };
 
-    float dot = (ab.x * cb.x + ab.y * cb.y); // dot product
-    float cross = (ab.x * cb.y - ab.y * cb.x); // cross product
+    float dot = (ab.x * cb.x + ab.y * cb.y); 
+    float cross = (ab.x * cb.y - ab.y * cb.x); 
 
     float alpha = atan2(cross, dot);
 
@@ -135,13 +137,51 @@ void line_to_poly(Polygon const& polygon) {
 
 }
 
-// template<typename Polygon>
-void draw_poly(Polygon const& polygon) {
+void draw_nearest(Polygon const& polygon, Point const& source, Point const& target, int distance) {
+    sf::Color color(250, 0, 0);
     int size = polygon.size;
     const auto& points = polygon.vertex;
-    if (size < 3) {
-        throw("Ga");
+
+    sf::Vertex a;
+    sf::Vertex b;
+
+    for (int i = 0; i < size-1; i++) {
+        const sf::Vertex line[] = {
+            sf::Vertex(sf::Vector2f(points[i][0], points[i][1]), color),
+            sf::Vertex(sf::Vector2f(points[i+1][0], points[i+1][1]), color)
+        };
+        int radius = 2;
+        sf::CircleShape shape(2);
+        shape.setPosition(sf::Vector2f(points[i][0]-radius, points[i][1]-radius));
+        window.draw(line, 2, sf::Lines);
+        window.draw(shape);
     }
+
+    sf::Vertex line[] = {
+        sf::Vertex(sf::Vector2f(points[size-1][0], points[size-1][1]), color),
+        sf::Vertex(sf::Vector2f(points[0][0], points[0][1]), color)
+    };
+    
+
+    int radius = 2;
+    sf::CircleShape shape(2);
+    shape.setPosition(sf::Vector2f(points[size-1][0]-radius, points[size-1][1]-radius));
+    window.draw(line, 2, sf::Lines);
+    window.draw(shape);
+
+     sf::Vertex la_linea[] = {
+        sf::Vertex(sf::Vector2f(source[0], source[1]), color),
+        sf::Vertex(sf::Vector2f(target[0], target[1]), color)
+    };
+    window.draw(la_linea, 2, sf::Lines);
+    
+}
+
+
+void draw_poly(Polygon const& polygon) {
+    
+    int size = polygon.size;
+    const auto& points = polygon.vertex;
 
     sf::Vertex a;
     sf::Vertex b;
@@ -171,55 +211,10 @@ void draw_poly(Polygon const& polygon) {
 }
 
 
-// void draw_polygons() {
-//     int i = 0;
-//     auto polys = r.get_polygons();
-//     while (polys[i].size) {
-//         const carro&  poly = polys[i];
-//         draw_poly(poly);
-//         i++;
-//     }
-// }
-
-// void draw_boxes() {
-//     int i = 0;
-//     auto nodes = r.get_nudes();
-//     while (nodes[i].size) {
-//         const carro&  node = nodes[i];
-//         const carro& boxes = node.box;
-//         for (int i = 0; i < node.size; i++) {
-//             draw_box(boxes[i]);
-//         }
-//         i++;
-//     }
-// }
-
-
 
 int main(int argc, char **argv){
     srand(time(NULL));
-
-    // r.insert({1, 3, { {10, 10},   {5, 20},      {15, 20} }});
-    // r.insert({1, 3, { {800, 540},   {790, 555},      {850, 555} }});
-    // r.insert({1, 3, { {780, 570},   {760, 595},      {785, 595} }});
-    // r.insert({1, 3, { {391, 419},   {242, 264},      {400, 440} }});
-
-
-
-    // r.insert({1, 3, { {300, 200},   {280, 220},      {320, 220} }});
-
-    // r.insert({1, 4, { {600, 405}, {500, 405},   {600, 500},      {500, 500} }});
-    // r.insert({1, 11, { {55, 50}, {151, 47},{101, 75},{219, 73}, {150, 110}, {273, 112}, {330, 142}, {383, 176}, {242, 203}, {86, 153}, {100, 100}}});
-    // r.insert({2, 6, { {40,0},    {40,20},      {60,40},      {100,20}, {120,40}, {100,0} }});
-    // r.insert({3, 5, { {160,60},   {160,80},     {180,500},    {200,80}, {200,60}}});
-    // r.insert({4, 4, { {200,40},   {240,60},     {260,40},     {220,20} }});
-    // r.insert({5, 3, { {140,20},   {140,40},     {160,40} }});
-    // r.insert({6, 3, { {240,120},  {260,140},    {260,100} }});
-    // r.insert({7, 3, { {180,20},   {180,40},     {200,20} }});
     r.print();
-
-
-
     std::vector<sf::Shape*> points;
 
     while (window.isOpen())
@@ -248,7 +243,6 @@ int main(int argc, char **argv){
                     {
                         case sf::Keyboard::Enter:
                         {
-                            std::cout << "Enter\n";
                             decltype(r)::Polygon poly;
                             poly.size = points.size();
                             for(int i = 0; i < points.size(); i++)
@@ -261,6 +255,20 @@ int main(int argc, char **argv){
                             r.insert(poly);
                             r.print();
                             points.clear();
+                            break;
+                        }
+
+                        case sf::Keyboard::Add:
+                        {
+                            if (variable < r.get_size()) 
+                                variable++;
+                            break;
+                        }
+                        case sf::Keyboard::Subtract:
+                        {
+                            if (variable) 
+                                variable--;
+                            break;
                         }
                     }
                 }
@@ -272,9 +280,15 @@ int main(int argc, char **argv){
         {
             window.draw(**it);
         }
-        r.for_each_polygon(line_to_poly);
+        
         r.for_each_polygon(draw_poly);
-        // r.for_each_box(draw_box);
+    
+        auto pos = sf::Mouse::getPosition(window);
+
+        if (variable) 
+            r.for_each_nearest(variable, {pos.x, pos.y}, draw_nearest);
+
+        r.for_each_box(draw_box);
 
         int radius = 2;
         sf::CircleShape *shape = new sf::CircleShape(radius);
