@@ -1,5 +1,6 @@
 #include "rtree.hpp"
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 #include <SFML/System.hpp>
 #include <array>
 #include <complex>
@@ -18,17 +19,19 @@ g++ -std=c++17 -g -c main.cpp &&  g++ -g main.o -o sfml-app -lsfml-graphics -lsf
 #define MAX_POLY 1000
 #define MAX_VERTEX 32
 #define MAX_KNN 16
-
 RTree<ORDER, DIM, MAX_POLY, MAX_VERTEX, MAX_KNN> r;
 using Polygon = decltype(r)::Polygon;
 using Point = decltype(r)::Point;
 using Box = decltype(r)::Box;
 
+bool FUN_MODE = false;
 int width = 900, height = 600;
-int gui_offset = 150;
+int vertical_offset = 150;
+int horizontal_offset = 50;
 int variable = 0;
-
-sf::RenderWindow window(sf::VideoMode(width, height), "SFML works!");
+sf::Color guiColor = sf::Color(250, 250, 250);
+sf::RenderWindow window(sf::VideoMode(width, height), "R-Tree Eren la Gaviota");
+sf::Music music;
 
 sf::Color colors[] = {
     sf::Color(0, 255, 255),
@@ -213,10 +216,28 @@ void draw_poly(Polygon const& polygon) {
 
 
 void draw_layout() {
-
-    sf::RectangleShape rectangle1(sf::Vector2f(width-gui_offset, height-gui_offset));
-    rectangle1.setPosition(sf::Vector2f(gui_offset/2, gui_offset/2));
-    rectangle1.setFillColor(sf::Color::Black);
+    
+    sf::Texture t = sf::Texture();
+    t.loadFromFile("background.jpg");
+    
+    sf::Sprite s(t);
+    s.setScale({width/s.getLocalBounds().width, height/s.getLocalBounds().height});
+    if (FUN_MODE) {
+        window.draw(s);
+        if (music.getStatus() != sf::SoundSource::Status(2)) {
+            music.play();
+        }
+    } else {
+        music.stop();
+    }
+    
+    sf::RectangleShape aplha({width, height});
+    aplha.setFillColor(sf::Color(0, 0, 0, 130));
+    aplha.setOutlineColor(guiColor);
+    window.draw(aplha);
+    sf::RectangleShape rectangle1(sf::Vector2f(width-horizontal_offset, height-vertical_offset));
+    rectangle1.setPosition(sf::Vector2f(horizontal_offset/2, vertical_offset/2));
+    rectangle1.setFillColor(sf::Color::Transparent);
     rectangle1.setOutlineThickness(5);
     // rectangle1.setOutlineColor();
     window.draw(rectangle1);
@@ -231,12 +252,12 @@ void draw_layout() {
     
     info.setFont(font); 
     title.setFont(font); 
-    info.setString("Use el \"LEFT CLICK\" para dibujar puntos y \"ENTER\" para unirlos. \nPuede modificar el K de KNN con \"+\" Y \"-\".\nCualquier bug o duda, comunicarse con jose.huby@utec.edu.pe");
+    info.setString("Use el \"LEFT CLICK\" para dibujar puntos y \"ENTER\" para unirlos. \nPuede modificar el K de KNN con \"+\" Y \"-\".\nCualquier bug o duda, comunicarse con jose.huby@utec.edu.pe\n\"F\" para activar/desactivar FUN MODE");
     title.setString("R-Tree by Eren la Gaviota");
-    info.setPosition(sf::Vector2f(gui_offset/2, height - gui_offset/2 + 10));
-    title.setPosition(sf::Vector2f(gui_offset/2, 0));
-    info.setColor(sf::Color::White);
-    title.setColor(sf::Color::White);
+    info.setPosition(sf::Vector2f(horizontal_offset/2, height - vertical_offset/2 + 10));
+    title.setPosition(sf::Vector2f(horizontal_offset/2, 0));
+    info.setColor(guiColor);
+    title.setColor(guiColor);
     // set the character size
     info.setCharacterSize(14); // in pixels, not points!
     title.setCharacterSize(44); // in pixels, not points!
@@ -250,6 +271,10 @@ int main(int argc, char **argv){
     srand(time(NULL));
     r.print();
     std::vector<sf::Shape*> points;
+
+    if (!music.openFromFile("music.wav"))
+        return -1; // error
+
 
     while (window.isOpen())
     {
@@ -265,19 +290,25 @@ int main(int argc, char **argv){
 
                 case sf::Event::MouseButtonPressed:
                 {
-                    if ((event.mouseButton.x > gui_offset/2 && event.mouseButton.x < width-gui_offset/2
-                        && event.mouseButton.y > gui_offset/2 && event.mouseButton.y < height-gui_offset/2)) {
+                    if ((event.mouseButton.x > horizontal_offset/2 && event.mouseButton.x < width-horizontal_offset/2
+                        && event.mouseButton.y > vertical_offset/2 && event.mouseButton.y < height-vertical_offset/2)) {
                             int radius = 2;
                             sf::CircleShape *shape = new sf::CircleShape(radius);
                             shape->setPosition(event.mouseButton.x - radius, event.mouseButton.y - radius);
                             shape->setFillColor(sf::Color(250, 250, 250));
                             points.push_back(shape);
-                        }
+                    }
+                    break;
                 }
                 case sf::Event::KeyReleased:
                 {
                     switch (event.key.code)
                     {
+                        case sf::Keyboard::F:
+                        {
+                            FUN_MODE = !FUN_MODE;
+                            break;
+                        }
                         case sf::Keyboard::Enter:
                         {
                             decltype(r)::Polygon poly;
@@ -308,6 +339,7 @@ int main(int argc, char **argv){
                             break;
                         }
                     }
+                    break;
                 }
             }
         }
@@ -330,8 +362,8 @@ int main(int argc, char **argv){
 
         r.for_each_box(draw_box);
 
-        if ((sf::Mouse::getPosition(window).x > gui_offset/2 && sf::Mouse::getPosition(window).x < width-gui_offset/2
-            && sf::Mouse::getPosition(window).y > gui_offset/2 && sf::Mouse::getPosition(window).y < height-gui_offset/2)) {
+        if ((sf::Mouse::getPosition(window).x > horizontal_offset/2 && sf::Mouse::getPosition(window).x < width-horizontal_offset/2
+            && sf::Mouse::getPosition(window).y > vertical_offset/2 && sf::Mouse::getPosition(window).y < height-vertical_offset/2)) {
             int radius = 4;
             sf::CircleShape *shape = new sf::CircleShape(radius);
             shape->setPosition(sf::Mouse::getPosition(window).x - radius, sf::Mouse::getPosition(window).y - radius);
