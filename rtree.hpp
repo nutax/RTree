@@ -51,6 +51,7 @@ class RTree{
     Pointer delta[ORDER];
     Pointer parents[MAX_HEIGHT];
     int childs[MAX_HEIGHT];
+    Size sizes[MAX_HEIGHT];
     Box obox[ORDER+1];
     Pointer ochild[ORDER+1];
     int oidx[ORDER+1];
@@ -66,6 +67,9 @@ class RTree{
     Size top_dirty_polygon;
     Pointer dirty_polygons[MAX_POLYGONS];
 
+    Size top_willbe_dirty;
+    Pointer willbe_dirty[MAX_POLYGONS];
+
     struct vBFS{Pointer node_ptr; int lvl;};
     StaticQueue<vBFS, MAX_POLYGONS> bfs;
     
@@ -76,6 +80,13 @@ class RTree{
     StaticPriorityQueue<MINHEAP, vHBF, MAX_HEIGHT*ORDER + 1> hbf; // H best first
 
 
+
+    Node & get_node(Pointer node_ptr){
+        return nodes[node_ptr]; 
+    }
+    Polygon & get_polygon(Pointer polygon_ptr){
+        return polygons[polygon_ptr - POLYGON_ZONE]; 
+    }
     Pointer create_node(){
         return dirty_nodes[top_dirty_node++];
     }
@@ -87,16 +98,11 @@ class RTree{
         return dirty_nodes[top_dirty_polygon++] + POLYGON_ZONE;
     }
     void destroy_polygon(Pointer polygon_ptr){
+        get_polygon(polygon_ptr).size = DIRTY;
         dirty_nodes[--top_dirty_polygon] = polygon_ptr;
     }
     bool is_not_leaf(Pointer node_ptr){
         return nodes[node_ptr].child[0] < POLYGON_ZONE;
-    }
-    Node & get_node(Pointer node_ptr){
-        return nodes[node_ptr]; 
-    }
-    Polygon & get_polygon(Pointer polygon_ptr){
-        return polygons[polygon_ptr - POLYGON_ZONE]; 
     }
     Box get_mbb(Polygon const& polygon){
         Box box;
@@ -274,24 +280,24 @@ class RTree{
     }
 
 
-
-    public:
-    RTree(){
-        top_dirty_node = 0;
-        top_dirty_polygon = 0;
-        
-        for(Pointer i = 0; i < MAX_NODES; ++i) dirty_nodes[i] = i;
-        for(Pointer i = 0; i < MAX_POLYGONS; ++i) dirty_polygons[i] = i;
-
-        root = create_node();
-        get_node(root).child[0] = POLYGON_ZONE;
+    bool is_not_polygon(Pointer ptr){
+        return ptr < POLYGON_ZONE;
     }
 
-    void insert(Polygon const& polygon){
-        size++;
-        Box box = get_mbb(polygon);
-        Pointer child = create_polygon(polygon);
-        
+
+    int get_first_inter(Node const& node, Box const& box){
+        for(int i = 0; i<node.size; ++i){
+            bool intersects = true;
+            for(int j = 0; j<DIM; ++j){
+                intersects = intersects && (node.box[i].mins[j] <= box.maxs[j] && node.box[i].maxs[j] >= box.mins[j]);
+            }
+            if(intersects) return i;
+        }
+        return -1;
+    }
+
+
+    void insert_helper(Box box, Pointer child){
         Pointer current = root;
         int parent = -1;
 
@@ -338,6 +344,67 @@ class RTree{
         root_node.size = 2;
 
         root = new_root;
+    }
+
+    
+
+    void reinsert_except(int parent, Pointer except){
+        Node & node = get_node(parents[parent]);
+        Pointer reinsert = node.child[childs[parent]];
+        node.size -= 1;
+        for(int i = childs[parent]; i<node.size; ++i){
+            node.box[i] = node.box[i+1];
+            node.child[i] = node.child[i+1];
+        }
+        if(!is_not_leaf(parents[parent])) return;
+
+        top_willbe_dirty = 0;
+        bfs.clear();
+        bfs.push({reinsert, 0});
+        while(bfs.not_empty()) {
+            auto const& top = bfs.top();
+            Node const& top_node = get_node(top.node_ptr);
+            if(is_not_leaf(top.node_ptr)){
+                for(int i = 0; i < top_node.size; ++i) bfs.push({top_node.child[i], 0});
+                destroy_node(top.node_ptr);
+            }else{
+                willbe_dirty[top_willbe_dirty++] = top.node_ptr;
+            }
+            bfs.pop();
+        }
+
+        for(int i = 0; i<top_willbe_dirty; ++i){
+            Pointer const& wptr = willbe_dirty[i];
+            Node const& wnode = get_node(wptr);
+            for(int j = 0; j < wnode.size; ++j){
+                if(wnode.child[j] != except) insert_helper(wnode.box[j], wnode.child[j]);
+            }
+            destroy_node(wptr);
+        }
+
+        destroy_polygon(except);
+    }
+
+
+
+    public:
+    RTree(){
+        top_dirty_node = 0;
+        top_dirty_polygon = 0;
+        
+        for(Pointer i = 0; i < MAX_NODES; ++i) dirty_nodes[i] = i;
+        for(Pointer i = 0; i < MAX_POLYGONS; ++i) dirty_polygons[i] = i;
+
+        root = create_node();
+        get_node(root).child[0] = POLYGON_ZONE;
+    }
+
+    void insert(Polygon const& polygon){
+        size++;
+        Box box = get_mbb(polygon);
+        Pointer child = create_polygon(polygon);
+        
+        insert_helper(box, child);
     }
 
     void print(){
@@ -441,6 +508,43 @@ class RTree{
     }
 
     int get_size() {return size;}
+
+    /*
+        1. Bajar por primera interseccion
+            1.1. Si ninguno intersecta, terminar
+        2. Retroceder hasta el primer padre con tamaño mayor a 1
+            2.1. Si ninguno cumple, recrear el arbol
+            2.2. Si alguno cumple
+                2.2.1. Eliminar todos los nodos internos
+                2.2.1. Reinsertar todos los nodos hojas de ese ancestro
+            (No reinsertar el que se debe de eliminar)
+    */
+
+   void erase(Point const& point){
+       Box box;
+       for(int i = 0; i<DIM; ++i){
+           box.mins[i] = point[i] - 2;
+           box.maxs[i] = point[i] + 2;
+       }
+
+       Pointer current = root;
+       int parent = -1;
+
+        while(is_not_polygon(current)){
+            Node & node = get_node(current);
+            int best = get_first_inter(node, box);
+            if(best == -1) return;
+            parent += 1;
+            parents[parent] = current;
+            childs[parent] = best;
+            sizes[parent] = node.size;
+            current = node.child[best];
+        }
+
+        while(parent > 0 && get_node(parents[parent]).size == 1) parent--;
+
+        reinsert_except(parent, current);
+   }
 
 };
 
