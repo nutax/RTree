@@ -98,7 +98,9 @@ class RTree{
         return dirty_nodes[top_dirty_polygon++] + POLYGON_ZONE;
     }
     void destroy_polygon(Pointer polygon_ptr){
+        std::cout << "GAAAAAAAA" << std::endl;
         get_polygon(polygon_ptr).size = DIRTY;
+        
         dirty_nodes[--top_dirty_polygon] = polygon_ptr - POLYGON_ZONE;
     }
     bool is_not_leaf(Pointer node_ptr){
@@ -356,7 +358,10 @@ class RTree{
             node.box[i] = node.box[i+1];
             node.child[i] = node.child[i+1];
         }
-        if(!is_not_leaf(parents[parent])) return;
+        if(!is_not_leaf(parents[parent])) {
+            destroy_polygon(except);
+            return;
+        }
 
         top_willbe_dirty = 0;
         bfs.clear();
