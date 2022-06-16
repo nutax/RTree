@@ -9,7 +9,7 @@ g++ -c main.cpp
 g++ main.o -o sfml-app -lsfml-graphics -lsfml-window -lsfml-system
 ./sfml-app
 
-g++ -std=c++17 -g -c main.cpp &&  g++ -g main.o -o sfml-app -lsfml-graphics -lsfml-window -lsfml-system && ./sfml-app
+g++ -std=c++17 -g -c main.cpp &&  g++ -g main.o -o sfml-app -lsfml-graphics -lsfml-audio -lsfml-window -lsfml-system && ./sfml-app
 */
 
 #define carro auto
@@ -290,13 +290,19 @@ int main(int argc, char **argv){
 
                 case sf::Event::MouseButtonPressed:
                 {
+                    
                     if ((event.mouseButton.x > horizontal_offset/2 && event.mouseButton.x < width-horizontal_offset/2
                         && event.mouseButton.y > vertical_offset/2 && event.mouseButton.y < height-vertical_offset/2)) {
-                            int radius = 2;
-                            sf::CircleShape *shape = new sf::CircleShape(radius);
-                            shape->setPosition(event.mouseButton.x - radius, event.mouseButton.y - radius);
-                            shape->setFillColor(sf::Color(250, 250, 250));
-                            points.push_back(shape);
+                            if (event.mouseButton.button == sf::Mouse::Left) {
+                                int radius = 2;
+                                sf::CircleShape *shape = new sf::CircleShape(radius);
+                                shape->setPosition(event.mouseButton.x - radius, event.mouseButton.y - radius);
+                                shape->setFillColor(sf::Color(250, 250, 250));
+                                points.push_back(shape);
+                            }
+                            else if (event.mouseButton.button == sf::Mouse::Right) {
+                                r.erase({event.mouseButton.x, event.mouseButton.y});
+                            }
                     }
                     break;
                 }

@@ -99,7 +99,7 @@ class RTree{
     }
     void destroy_polygon(Pointer polygon_ptr){
         get_polygon(polygon_ptr).size = DIRTY;
-        dirty_nodes[--top_dirty_polygon] = polygon_ptr;
+        dirty_nodes[--top_dirty_polygon] = polygon_ptr - POLYGON_ZONE;
     }
     bool is_not_leaf(Pointer node_ptr){
         return nodes[node_ptr].child[0] < POLYGON_ZONE;
