@@ -4,8 +4,8 @@
 #include <iostream>
 #include <functional>
 #include <math.h>
-#include "StaticQueue.h"
-#include "StaticPriorityQueue.h"
+#include "StaticQueue.hpp"
+#include "StaticPriorityQueue.hpp"
 
 
 #define MAX(a,b) ((a > b) ? a : b);
@@ -346,6 +346,26 @@ private:
         root = new_root;
     }
 
+    void update_parents_after_removal(int parent){
+        for(int i = parent; i>0; --i){
+            Node & current_node = get_node(parents[i]);
+            Node & parent_node = get_node(parents[i-1]);
+
+            Box & child_box = current_node.box[childs[i]];
+            Box & current_box = parent_node.box[childs[i-1]];
+            for(int k = 0; k<DIM; ++k){
+                current_box.maxs[k] = INT32_MIN;
+                current_box.mins[k] = INT32_MAX;
+            }
+            for(int j = 0; j<current_node.size; ++j){
+                for(int k = 0; k<DIM; ++k){
+                    current_box.maxs[k] = MAX(current_box.maxs[k], current_node.box[j].maxs[k]);
+                    current_box.mins[k] = MIN(current_box.mins[k], current_node.box[j].mins[k]);
+                }
+            }
+        }
+    }
+
 
 
     void reinsert_except(int parent, Pointer except){
@@ -358,6 +378,8 @@ private:
             node.box[i] = node.box[i+1];
             node.child[i] = node.child[i+1];
         }
+
+        update_parents_after_removal(parent);
 
         if(parent == 0 && node.size == 0) node.child[0] = POLYGON_ZONE;
         if(reinsert == except){
@@ -548,7 +570,10 @@ public:
             current = node.child[best];
         }
 
+
+
         while(parent > 0 && get_node(parents[parent]).size == 1) parent--;
+
         reinsert_except(parent, current);
     }
 
