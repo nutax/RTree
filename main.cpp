@@ -28,7 +28,7 @@ using Box = decltype(r)::Box;
 bool FUN_MODE = false;
 int vertical_offset = 150;
 int horizontal_offset = 50;
-int width = 1024, height = 1024;
+int width = 800, height = 500;
 int variable = 0;
 sf::Color guiColor = sf::Color(250, 250, 250);
 sf::RenderWindow window(sf::VideoMode(width, height), "R-Tree Eren la Gaviota");
@@ -266,7 +266,7 @@ void draw_layout() {
     window.draw(info);
     window.draw(title);
 }
-std::vector<std::vector<int>> hilbert_matrix(width, std::vector<int>(height));
+std::vector<std::vector<int>> hilbert_matrix(1024, std::vector<int>(1024));
 std::vector<sf::Vector2i> hilbert_vec;
 int hilber_counter = 0;
 //hilbert curve algorithm
@@ -290,14 +290,7 @@ int main(int argc, char **argv){
     if (!music.openFromFile("music.wav"))
         return -1; // error
 
-    hilbert(std::log2(height), 0, 0, width, 0, 0, height);
-    //print each value of a matrix
-    for (int i = 0; i < height; i++) {
-        for (int j = 0; j < width; j++) {
-            std::cout << std::setw(4) << hilbert_matrix[i][j] << " ";
-        }
-        std::cout << std::endl;
-    }
+    hilbert(10, 0, 0, 1024, 0, 0, 1024);
     while (window.isOpen())
     {
         sf::Event event;
