@@ -4,6 +4,7 @@
 #include <SFML/System.hpp>
 #include <array>
 #include <complex>
+#include <iomanip>
 /*
 g++ -c main.cpp
 g++ main.o -o sfml-app -lsfml-graphics -lsfml-window -lsfml-system
@@ -25,9 +26,9 @@ using Point = decltype(r)::Point;
 using Box = decltype(r)::Box;
 
 bool FUN_MODE = false;
-int width = 900, height = 600;
 int vertical_offset = 150;
 int horizontal_offset = 50;
+int width = 1024, height = 1024;
 int variable = 0;
 sf::Color guiColor = sf::Color(250, 250, 250);
 sf::RenderWindow window(sf::VideoMode(width, height), "R-Tree Eren la Gaviota");
@@ -259,13 +260,27 @@ void draw_layout() {
     info.setColor(guiColor);
     title.setColor(guiColor);
     // set the character size
-    info.setCharacterSize(14); // in pixels, not points!
+    info.setCharacterSize(12); // in pixels, not points!
     title.setCharacterSize(44); // in pixels, not points!
 
     window.draw(info);
     window.draw(title);
 }
-
+std::vector<std::vector<int>> hilbert_matrix(width, std::vector<int>(height));
+std::vector<sf::Vector2i> hilbert_vec;
+int hilber_counter = 0;
+//hilbert curve algorithm
+void hilbert(float n, float x, float y, float xi, float xj, float yi, float yj) {
+    if (n <= 0) {
+        hilbert_matrix[x + (xi + yi)/2][y + (xj + yj)/2] = hilber_counter++;
+        // hilbert_vec.push_back({x + (xi + yi)/2, y + (xj + yj)/2});
+    } else {
+        hilbert(n - 1, x            , y,                yi/2, yj/2, xi/2, xj/2);
+        hilbert(n - 1, x+xi/2       , y+xj/2,           xi/2, xj/2, yi/2, yj/2);
+        hilbert(n - 1, x+xi/2+yi/2  , y+xj/2+yj/2,      xi/2, xj/2, yi/2, yj/2);
+        hilbert(n - 1, x+xi/2+yi    , y+xj/2+yj,        -yi/2, -yj/2, -xi/2, -xj/2);
+    }
+}
 
 int main(int argc, char **argv){
     srand(time(NULL));
@@ -275,7 +290,14 @@ int main(int argc, char **argv){
     if (!music.openFromFile("music.wav"))
         return -1; // error
 
-
+    hilbert(std::log2(height), 0, 0, width, 0, 0, height);
+    //print each value of a matrix
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            std::cout << std::setw(4) << hilbert_matrix[i][j] << " ";
+        }
+        std::cout << std::endl;
+    }
     while (window.isOpen())
     {
         sf::Event event;
