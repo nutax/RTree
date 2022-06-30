@@ -20,7 +20,7 @@ g++ -std=c++17 -g -c main.cpp &&  g++ -g main.o -o sfml-app -lsfml-graphics -lsf
 #define MAX_POLY 1000
 #define MAX_VERTEX 32
 #define MAX_KNN 16
-RTree<ORDER, DIM, MAX_POLY, MAX_VERTEX, MAX_KNN> r;
+RTree<ORDER, DIM, MAX_POLY, MAX_VERTEX, MAX_KNN, true> r;
 using Polygon = decltype(r)::Polygon;
 using Point = decltype(r)::Point;
 using Box = decltype(r)::Box;
@@ -32,6 +32,7 @@ int width = 800, height = 500;
 int variable = 0;
 sf::Color guiColor = sf::Color(250, 250, 250);
 sf::RenderWindow window(sf::VideoMode(width, height), "R-Tree Eren la Gaviota");
+std::vector<std::vector<int>> hilbert_matrix(1024, std::vector<int>(1024));
 sf::Music music;
 
 sf::Color colors[] = {
@@ -79,6 +80,18 @@ void draw_box(const Box& box, int lvl, int height) {
     };
     window.draw(line4, 2, sf::Lines);
 
+}
+
+void get_z_index(Polygon& poly) {
+    float mean_x = 0;
+    float mean_y = 0;
+    for (int i = 0; i < poly.size; ++i) {
+        mean_x += poly.vertex[i][0];
+        mean_y += poly.vertex[i][1];
+    }
+    mean_x /= poly.size;
+    mean_y /= poly.size;
+    poly.z = hilbert_matrix[(int)mean_x][(int)mean_y];
 }
 
 float distance(float aX,float  aY,float  bX,float  bY) {
@@ -266,8 +279,6 @@ void draw_layout() {
     window.draw(info);
     window.draw(title);
 }
-std::vector<std::vector<int>> hilbert_matrix(1024, std::vector<int>(1024));
-std::vector<sf::Vector2i> hilbert_vec;
 int hilber_counter = 0;
 //hilbert curve algorithm
 void hilbert(float n, float x, float y, float xi, float xj, float yi, float yj) {
@@ -340,7 +351,7 @@ int main(int argc, char **argv){
                                 poly.vertex[i][0] = pos.x;
                                 poly.vertex[i][1] = pos.y;
                             }
-
+                            get_z_index(poly);
                             r.insert(poly);
                             r.print();
                             points.clear();

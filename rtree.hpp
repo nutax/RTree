@@ -772,7 +772,8 @@ private:
         for(int i = 1; i<A.size; ++i) expand_box(box_A, A.box[i]);
         for(int i = 1; i<B.size; ++i) expand_box(box_B, B.box[i]);
 
-        Box & C = get_node(A.right);
+        Node & C = get_node(A.right);
+        
 
         B.parent = A.parent;
         B.left = C.left;
@@ -843,7 +844,7 @@ private:
     }
 
     void update_parents_after_lend(Pointer current){
-        for(Pointer parent = current.parent; parent != DIRTY;){
+        for(Pointer parent = get_node(current).parent; parent != DIRTY;){
             Node & current_node = get_node(current);
             Node & parent_node = get_node(parent);
 
@@ -899,7 +900,7 @@ private:
     bool lend_overflow(Pointer current, Box const& box, Pointer const& child){
         Node & node = get_node(current);
         Pointer spointer = node.left;
-        {
+        do {
             if(spointer == DIRTY) return false;
             Node & snode = get_node(spointer);
             if(snode.size < ORDER) break;
