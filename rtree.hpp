@@ -44,7 +44,7 @@ public:
         Size size = 0;
         Box box[ORDER];
         Pointer child[ORDER];
-    }; 
+    };
 
 private:
     inline static const float log2ORDER = log2(ORDER);
@@ -61,7 +61,7 @@ private:
     Box obox[ORDER+1];
     Pointer ochild[ORDER+1];
     int oidx[ORDER+1];
-    
+
 
     Node nodes[MAX_NODES];
     Polygon polygons[MAX_POLYGONS];
@@ -83,7 +83,7 @@ private:
 
     struct vHBF{Position distance; Pointer node_ptr; const bool operator<(vHBF const& other) const { return distance < other.distance; } };
     StaticPriorityQueue<MINHEAP, vHBF, MAX_HEIGHT*ORDER + 1> hbf; // H best first
-    
+
 
 
     Node & get_node(Pointer node_ptr){
@@ -619,7 +619,7 @@ public:
         Box box[ORDER];
         Pointer child[ORDER];
         Pointer parent = DIRTY, right = DIRTY, left = DIRTY;
-    }; 
+    };
 
 private:
     inline static const float log2ORDER = log2(ORDER);
@@ -636,7 +636,7 @@ private:
     Box obox[ORDER+1];
     Pointer ochild[ORDER+1];
     int oidx[ORDER+1];
-    
+
 
     Node nodes[MAX_NODES];
     Polygon polygons[MAX_POLYGONS];
@@ -658,7 +658,7 @@ private:
 
     struct vHBF{Position distance; Pointer node_ptr; const bool operator<(vHBF const& other) const { return distance < other.distance; } };
     StaticPriorityQueue<MINHEAP, vHBF, MAX_HEIGHT*ORDER + 1> hbf; // H best first
-    
+
 
 
     Node & get_node(Pointer node_ptr){
@@ -733,7 +733,8 @@ private:
         }
     }
 
-    Box split(Node & A, Box & box, Pointer & child){ // Tiene 4 outputs esta función
+    Box split(Pointer ptr_A, Box & box, Pointer & child){ // Tiene 4 outputs esta función
+        Node & A = get_node(ptr_A);
         for(int i = 0; i<ORDER; ++i){
             obox[i] = A.box[i];
             ochild[i] = A.child[i];
@@ -747,7 +748,7 @@ private:
             obox[i+1] = box;
             ochild[i+1] = child;
         }
-        
+
 
         child = create_node();
         Node & B = get_node(child); B.size = 0;
@@ -759,8 +760,8 @@ private:
             }
             A.size = i;
             for(; i<=ORDER; ++i){
-                B.box[i] = obox[i];
-                B.child[i] = ochild[i];
+                B.box[i-A.size] = obox[i];
+                B.child[i-A.size] = ochild[i];
             }
             B.size = i - A.size;
         }
@@ -771,16 +772,19 @@ private:
 
         for(int i = 1; i<A.size; ++i) expand_box(box_A, A.box[i]);
         for(int i = 1; i<B.size; ++i) expand_box(box_B, B.box[i]);
-
+        if (A.right == DIRTY) {
+            B.parent = A.parent;
+            B.right = A.right;
+            B.left = ptr_A;
+            A.right = child;
+            return box_A;
+        }
         Node & C = get_node(A.right);
-        
-
         B.parent = A.parent;
-        B.left = C.left;
         B.right = A.right;
+        B.left = ptr_A;
         C.left = child;
         A.right = child;
-        
 
         return box_A;
     }
@@ -864,38 +868,38 @@ private:
         }
     }
 
-   void lend_overflow_r(Pointer current, Box const& box, Pointer const& child){
-    Node & node = get_node(current);
-    if(node.size < ORDER){
-        int i = node.size-1;
-        for(; i>=0 && node.box[i].z > box.z; --i){
-            node.box[i+1] = node.box[i];
-            node.child[i+1] =node.child[i];
+    void lend_overflow_r(Pointer current, Box const& box, Pointer const& child){
+        Node & node = get_node(current);
+        if(node.size < ORDER){
+            int i = node.size-1;
+            for(; i>=0 && node.box[i].z > box.z; --i){
+                node.box[i+1] = node.box[i];
+                node.child[i+1] =node.child[i];
+            }
+            node.box[i+1] = box;
+            node.child[i+1] = child;
+            node.size += 1;
+            update_parents_after_lend(current);
         }
-        node.box[i+1] = box;
-        node.child[i+1] = child;
-        node.size += 1;
-        update_parents_after_lend(current);
+        else if(node.box[0].z < box.z){
+            Box ob = node.box[0];
+            Pointer oc = node.child[0];
+            int i = 1;
+            for(; i<node.size && node.box[i].z < box.z; ++i){
+                node.box[i-1] = node.box[i];
+                node.child[i-1] = node.child[i];
+            }
+            node.box[i-1] = box;
+            node.child[i-1] = child;
+            for(++i; i<node.size; ++i){
+                node.box[i-1] = node.box[i];
+                node.child[i-1] = node.child[i];
+            }
+            update_parents_after_lend(current);
+            lend_overflow_r(node.left, ob, oc);
+        }
+        else lend_overflow_r(node.left, box, child);
     }
-    else if(node.box[0].z < box.z){
-        Box ob = node.box[0];
-        Pointer oc = node.child[0];
-        int i = 1;
-        for(; i<node.size && node.box[i].z < box.z; ++i){
-            node.box[i-1] = node.box[i];
-            node.child[i-1] = node.child[i];
-        }
-        node.box[i-1] = box;
-        node.child[i-1] = child;
-        for(++i; i<node.size; ++i){
-            node.box[i-1] = node.box[i];
-            node.child[i-1] = node.child[i];
-        }
-        update_parents_after_lend(current);
-        lend_overflow_r(node.left, ob, oc);
-    }
-    else lend_overflow_r(node.left, box, child);
-   }
 
     bool lend_overflow(Pointer current, Box const& box, Pointer const& child){
         Node & node = get_node(current);
@@ -905,7 +909,7 @@ private:
             Node & snode = get_node(spointer);
             if(snode.size < ORDER) break;
             spointer = snode.left;
-            
+
         }while(true);
 
         lend_overflow_r(current, box, child);
@@ -944,7 +948,7 @@ private:
 
             if(lend_overflow(current, box, child)) return;
 
-            fix_box = split(current_node, box, child);
+            fix_box = split(current, box, child);
 
             if(parent == -1) break;
 
@@ -961,7 +965,7 @@ private:
         root_node.box[0] = fix_box;
         root_node.box[1] = box;
 
-        root_node.child[0] = root; 
+        root_node.child[0] = root;
         root_node.child[1] = child;
 
         root_node.size = 2;

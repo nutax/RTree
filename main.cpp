@@ -36,11 +36,11 @@ std::vector<std::vector<int>> hilbert_matrix(1024, std::vector<int>(1024));
 sf::Music music;
 
 sf::Color colors[] = {
-    sf::Color(0, 255, 255),
-    sf::Color(255, 0, 255),
-    sf::Color(255, 255, 0),
-    sf::Color(255, 0, 0),
-    sf::Color(0, 255, 0)
+        sf::Color(0, 255, 255),
+        sf::Color(255, 0, 255),
+        sf::Color(255, 255, 0),
+        sf::Color(255, 0, 0),
+        sf::Color(0, 255, 0)
 };
 
 
@@ -57,26 +57,26 @@ void draw_box(const Box& box, int lvl, int height) {
     auto bY = box.maxs[1]+(offset);
 
     sf::Vertex line1[] = {
-        sf::Vertex(sf::Vector2f(aX, aY), color),
-        sf::Vertex(sf::Vector2f(aX, bY), color)
+            sf::Vertex(sf::Vector2f(aX, aY), color),
+            sf::Vertex(sf::Vector2f(aX, bY), color)
     };
     window.draw(line1, 2, sf::Lines);
 
     sf::Vertex line2[] = {
-        sf::Vertex(sf::Vector2f(aX, aY), color),
-        sf::Vertex(sf::Vector2f(bX, aY), color)
+            sf::Vertex(sf::Vector2f(aX, aY), color),
+            sf::Vertex(sf::Vector2f(bX, aY), color)
     };
     window.draw(line2, 2, sf::Lines);
 
     sf::Vertex line3[] = {
-        sf::Vertex(sf::Vector2f(aX, bY), color),
-        sf::Vertex(sf::Vector2f(bX, bY), color)
+            sf::Vertex(sf::Vector2f(aX, bY), color),
+            sf::Vertex(sf::Vector2f(bX, bY), color)
     };
     window.draw(line3, 2, sf::Lines);
 
     sf::Vertex line4[] = {
-        sf::Vertex(sf::Vector2f(bX, aY), color),
-        sf::Vertex(sf::Vector2f(bX, bY), color)
+            sf::Vertex(sf::Vector2f(bX, aY), color),
+            sf::Vertex(sf::Vector2f(bX, bY), color)
     };
     window.draw(line4, 2, sf::Lines);
 
@@ -103,7 +103,7 @@ void line_to_poly(Polygon const& polygon) {
     const auto& points = polygon.vertex;
     auto pos = sf::Mouse::getPosition(window);
     float min_x, min_y, min_hypot = 1e10;
-    float min_x_a, min_y_a, min_hypot_a = 1e10; 
+    float min_x_a, min_y_a, min_hypot_a = 1e10;
     for (int i = 0; i < size; i++) {
         float current_hypot = hypot(points[i][0]-pos.x, points[i][1]-pos.y);
         if (min_hypot > current_hypot) {
@@ -116,17 +116,17 @@ void line_to_poly(Polygon const& polygon) {
             min_x = points[i][0];
             min_y = points[i][1];
         } else if (min_hypot_a > current_hypot) {
-                min_hypot_a = current_hypot;
-                min_x_a = points[i][0];
-                min_y_a = points[i][1];
-            }
+            min_hypot_a = current_hypot;
+            min_x_a = points[i][0];
+            min_y_a = points[i][1];
+        }
     }
 
     sf::Vector2f ab = { min_x - min_x_a, min_y - min_y_a };
     sf::Vector2f cb = { min_x - pos.x, min_y - pos.y };
 
-    float dot = (ab.x * cb.x + ab.y * cb.y); 
-    float cross = (ab.x * cb.y - ab.y * cb.x); 
+    float dot = (ab.x * cb.x + ab.y * cb.y);
+    float cross = (ab.x * cb.y - ab.y * cb.x);
 
     float alpha = atan2(cross, dot);
 
@@ -142,13 +142,13 @@ void line_to_poly(Polygon const& polygon) {
         const sf::Vertex line_a[] = {
                 sf::Vertex(sf::Vector2f(px, py)),
                 sf::Vertex(sf::Vector2f(pos.x, pos.y))
-            };
+        };
         window.draw(line_a, 2, sf::Lines);
     } else {
         const sf::Vertex line_a[] = {
                 sf::Vertex(sf::Vector2f(min_x, min_y)),
                 sf::Vertex(sf::Vector2f(pos.x, pos.y))
-            };
+        };
         window.draw(line_a, 2, sf::Lines);
 
     };
@@ -165,8 +165,8 @@ void draw_nearest(Polygon const& polygon, Point const& source, Point const& targ
 
     for (int i = 0; i < size-1; i++) {
         const sf::Vertex line[] = {
-            sf::Vertex(sf::Vector2f(points[i][0], points[i][1]), color),
-            sf::Vertex(sf::Vector2f(points[i+1][0], points[i+1][1]), color)
+                sf::Vertex(sf::Vector2f(points[i][0], points[i][1]), color),
+                sf::Vertex(sf::Vector2f(points[i+1][0], points[i+1][1]), color)
         };
         int radius = 2;
         sf::CircleShape shape(2);
@@ -176,10 +176,10 @@ void draw_nearest(Polygon const& polygon, Point const& source, Point const& targ
     }
 
     sf::Vertex line[] = {
-        sf::Vertex(sf::Vector2f(points[size-1][0], points[size-1][1]), color),
-        sf::Vertex(sf::Vector2f(points[0][0], points[0][1]), color)
+            sf::Vertex(sf::Vector2f(points[size-1][0], points[size-1][1]), color),
+            sf::Vertex(sf::Vector2f(points[0][0], points[0][1]), color)
     };
-    
+
 
     int radius = 2;
     sf::CircleShape shape(2);
@@ -187,17 +187,17 @@ void draw_nearest(Polygon const& polygon, Point const& source, Point const& targ
     window.draw(line, 2, sf::Lines);
     window.draw(shape);
 
-     sf::Vertex la_linea[] = {
-        sf::Vertex(sf::Vector2f(source[0], source[1]), color),
-        sf::Vertex(sf::Vector2f(target[0], target[1]), color)
+    sf::Vertex la_linea[] = {
+            sf::Vertex(sf::Vector2f(source[0], source[1]), color),
+            sf::Vertex(sf::Vector2f(target[0], target[1]), color)
     };
     window.draw(la_linea, 2, sf::Lines);
-    
+
 }
 
 
 void draw_poly(Polygon const& polygon) {
-    
+
     int size = polygon.size;
     const auto& points = polygon.vertex;
 
@@ -205,8 +205,8 @@ void draw_poly(Polygon const& polygon) {
     sf::Vertex b;
     for (int i = 0; i < size-1; i++) {
         const sf::Vertex line[] = {
-            sf::Vertex(sf::Vector2f(points[i][0], points[i][1])),
-            sf::Vertex(sf::Vector2f(points[i+1][0], points[i+1][1]))
+                sf::Vertex(sf::Vector2f(points[i][0], points[i][1])),
+                sf::Vertex(sf::Vector2f(points[i+1][0], points[i+1][1]))
         };
         int radius = 2;
         sf::CircleShape shape(2);
@@ -216,10 +216,10 @@ void draw_poly(Polygon const& polygon) {
     }
 
     sf::Vertex line[] = {
-        sf::Vertex(sf::Vector2f(points[size-1][0], points[size-1][1])),
-        sf::Vertex(sf::Vector2f(points[0][0], points[0][1]))
+            sf::Vertex(sf::Vector2f(points[size-1][0], points[size-1][1])),
+            sf::Vertex(sf::Vector2f(points[0][0], points[0][1]))
     };
-    
+
 
     int radius = 2;
     sf::CircleShape shape(2);
@@ -230,10 +230,10 @@ void draw_poly(Polygon const& polygon) {
 
 
 void draw_layout() {
-    
+
     sf::Texture t = sf::Texture();
     t.loadFromFile("background.jpg");
-    
+
     sf::Sprite s(t);
     s.setScale({width/s.getLocalBounds().width, height/s.getLocalBounds().height});
     if (FUN_MODE) {
@@ -244,7 +244,7 @@ void draw_layout() {
     } else {
         music.stop();
     }
-    
+
     sf::RectangleShape aplha({width, height});
     aplha.setFillColor(sf::Color(0, 0, 0, 130));
     aplha.setOutlineColor(guiColor);
@@ -263,9 +263,9 @@ void draw_layout() {
     {
         // cout << "can't load font" << endl;
     }
-    
-    info.setFont(font); 
-    title.setFont(font); 
+
+    info.setFont(font);
+    title.setFont(font);
     info.setString("Use el \"LEFT CLICK\" para dibujar puntos y \"ENTER\" para unirlos. \nPuede modificar el K de KNN con \"+\" Y \"-\".\nCualquier bug o duda, comunicarse con jose.huby@utec.edu.pe\n\"F\" para activar/desactivar FUN MODE");
     title.setString("R-Tree by Eren la Gaviota");
     info.setPosition(sf::Vector2f(horizontal_offset/2, height - vertical_offset/2 + 10));
@@ -316,19 +316,19 @@ int main(int argc, char **argv){
 
                 case sf::Event::MouseButtonPressed:
                 {
-                    
+
                     if ((event.mouseButton.x > horizontal_offset/2 && event.mouseButton.x < width-horizontal_offset/2
-                        && event.mouseButton.y > vertical_offset/2 && event.mouseButton.y < height-vertical_offset/2)) {
-                            if (event.mouseButton.button == sf::Mouse::Left) {
-                                int radius = 2;
-                                sf::CircleShape *shape = new sf::CircleShape(radius);
-                                shape->setPosition(event.mouseButton.x - radius, event.mouseButton.y - radius);
-                                shape->setFillColor(sf::Color(250, 250, 250));
-                                points.push_back(shape);
-                            }
-                            else if (event.mouseButton.button == sf::Mouse::Right) {
-                                r.erase({event.mouseButton.x, event.mouseButton.y});
-                            }
+                         && event.mouseButton.y > vertical_offset/2 && event.mouseButton.y < height-vertical_offset/2)) {
+                        if (event.mouseButton.button == sf::Mouse::Left) {
+                            int radius = 2;
+                            sf::CircleShape *shape = new sf::CircleShape(radius);
+                            shape->setPosition(event.mouseButton.x - radius, event.mouseButton.y - radius);
+                            shape->setFillColor(sf::Color(250, 250, 250));
+                            points.push_back(shape);
+                        }
+                        else if (event.mouseButton.button == sf::Mouse::Right) {
+                            r.erase({event.mouseButton.x, event.mouseButton.y});
+                        }
                     }
                     break;
                 }
@@ -360,13 +360,13 @@ int main(int argc, char **argv){
 
                         case sf::Keyboard::Add:
                         {
-                            if (variable < r.get_size()) 
+                            if (variable < r.get_size())
                                 variable++;
                             break;
                         }
                         case sf::Keyboard::Subtract:
                         {
-                            if (variable) 
+                            if (variable)
                                 variable--;
                             break;
                         }
@@ -384,18 +384,18 @@ int main(int argc, char **argv){
         {
             window.draw(**it);
         }
-        
+
         r.for_each_polygon(draw_poly);
-    
+
         auto pos = sf::Mouse::getPosition(window);
 
-        if (variable) 
+        if (variable)
             r.for_each_nearest(variable, {pos.x, pos.y}, draw_nearest);
 
         r.for_each_box(draw_box);
 
         if ((sf::Mouse::getPosition(window).x > horizontal_offset/2 && sf::Mouse::getPosition(window).x < width-horizontal_offset/2
-            && sf::Mouse::getPosition(window).y > vertical_offset/2 && sf::Mouse::getPosition(window).y < height-vertical_offset/2)) {
+             && sf::Mouse::getPosition(window).y > vertical_offset/2 && sf::Mouse::getPosition(window).y < height-vertical_offset/2)) {
             int radius = 4;
             sf::CircleShape *shape = new sf::CircleShape(radius);
             shape->setPosition(sf::Mouse::getPosition(window).x - radius, sf::Mouse::getPosition(window).y - radius);
