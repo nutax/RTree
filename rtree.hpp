@@ -888,13 +888,14 @@ private:
             for(; i<node.size && node.box[i].z < box.z; ++i){
                 node.box[i-1] = node.box[i];
                 node.child[i-1] = node.child[i];
+
             }
             node.box[i-1] = box;
             node.child[i-1] = child;
-            for(++i; i<node.size; ++i){
-                node.box[i-1] = node.box[i];
-                node.child[i-1] = node.child[i];
-            }
+            //for(++i; i<node.size; ++i){
+            //    node.box[i-1] = node.box[i];
+            //    node.child[i-1] = node.child[i];
+            //}
             update_parents_after_lend(current);
             lend_overflow_r(node.left, ob, oc);
         }
@@ -1070,6 +1071,7 @@ public:
     void print(){
         bfs.clear();
         bfs.push({root, 0});
+        std::cout << "HILBERT R TREE:\n";
         while(bfs.not_empty()) {
             auto const& top = bfs.top();
             Node const& node = get_node(top.node_ptr);
@@ -1077,8 +1079,10 @@ public:
             for(int i = 0; i<node.size; ++i) {
                 std::cout << " R" << i << "( ";
                 for(int j = 0; j<DIM; ++j){
-                    std::cout << 'D' <<  j << "[" << node.box[i].mins[j] << ',' << node.box[i].maxs[j] << "] ";
+                    std::cout << 'D' <<  j << "[" << node.box[i].mins[j] << "] ";
+
                 }
+                std::cout << "Z[" << node.box[i].z << "] ";
                 std::cout << ") ";
             }
             //std::cout << " }";
