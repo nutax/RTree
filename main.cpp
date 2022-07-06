@@ -20,12 +20,15 @@ g++ -std=c++17 -g -c main.cpp &&  g++ -g main.o -o sfml-app -lsfml-graphics -lsf
 #define MAX_POLY 1000
 #define MAX_VERTEX 32
 #define MAX_KNN 16
-RTree<ORDER, DIM, MAX_POLY, MAX_VERTEX, MAX_KNN, true> r;
-using Polygon = decltype(r)::Polygon;
-using Point = decltype(r)::Point;
-using Box = decltype(r)::Box;
+RTree<ORDER, DIM, MAX_POLY, MAX_VERTEX, MAX_KNN, true> hilbert_tree;
+RTree<ORDER, DIM, MAX_POLY, MAX_VERTEX, MAX_KNN, false> r_tree;
+using Polygon = decltype(hilbert_tree)::Polygon;
+using Point = decltype(hilbert_tree)::Point;
+using Box_hilbert = decltype(hilbert_tree)::Box;
+using Box_r = decltype(r_tree)::Box;
 
 bool FUN_MODE = false;
+bool HILBERT_MODE = false;
 int vertical_offset = 150;
 int horizontal_offset = 50;
 int width = 800, height = 500;
@@ -46,7 +49,44 @@ sf::Color colors[] = {
 
 int h = 1;
 
-void draw_box(const Box& box, int lvl, int height) {
+void draw_box_r(const Box_r& box, int lvl, int height) {
+    sf::Color const& color = colors[lvl%5];
+    int offset = (lvl < height)*2*(height - lvl);
+
+    auto aX = box.mins[0]-(offset);
+    auto aY = box.mins[1]-(offset);
+
+    auto bX = box.maxs[0]+(offset);
+    auto bY = box.maxs[1]+(offset);
+
+    sf::Vertex line1[] = {
+            sf::Vertex(sf::Vector2f(aX, aY), color),
+            sf::Vertex(sf::Vector2f(aX, bY), color)
+    };
+    window.draw(line1, 2, sf::Lines);
+
+    sf::Vertex line2[] = {
+            sf::Vertex(sf::Vector2f(aX, aY), color),
+            sf::Vertex(sf::Vector2f(bX, aY), color)
+    };
+    window.draw(line2, 2, sf::Lines);
+
+    sf::Vertex line3[] = {
+            sf::Vertex(sf::Vector2f(aX, bY), color),
+            sf::Vertex(sf::Vector2f(bX, bY), color)
+    };
+    window.draw(line3, 2, sf::Lines);
+
+    sf::Vertex line4[] = {
+            sf::Vertex(sf::Vector2f(bX, aY), color),
+            sf::Vertex(sf::Vector2f(bX, bY), color)
+    };
+    window.draw(line4, 2, sf::Lines);
+
+}
+
+
+void draw_box_hilbert(const Box_hilbert& box, int lvl, int height) {
     sf::Color const& color = colors[lvl%5];
     int offset = (lvl < height)*2*(height - lvl);
 
@@ -233,17 +273,32 @@ void draw_layout() {
 
     sf::Texture t = sf::Texture();
     t.loadFromFile("background.jpg");
+    sf::Sprite fun_background(t);
+    fun_background.setScale({width/fun_background.getLocalBounds().width, height/fun_background.getLocalBounds().height});
 
-    sf::Sprite s(t);
-    s.setScale({width/s.getLocalBounds().width, height/s.getLocalBounds().height});
+
+    sf::Texture t2 = sf::Texture();
+    t2.loadFromFile("jedi.jpeg");
+    sf::Sprite good_background(t2);
+    good_background.setScale({width/good_background.getLocalBounds().width, height/good_background.getLocalBounds().height});
+
+    sf::Texture t3 = sf::Texture();
+    t3.loadFromFile("sith.jpg");
+    sf::Sprite bad_background(t3);
+    bad_background.setScale({width/bad_background.getLocalBounds().width, height/bad_background.getLocalBounds().height});
+
+
     if (FUN_MODE) {
-        window.draw(s);
+        window.draw(fun_background);
         if (music.getStatus() != sf::SoundSource::Status(2)) {
             music.play();
         }
     } else {
         music.stop();
+        if (HILBERT_MODE) window.draw(bad_background);
+        else window.draw(good_background);
     }
+    
 
     sf::RectangleShape aplha({width, height});
     aplha.setFillColor(sf::Color(0, 0, 0, 130));
@@ -267,7 +322,8 @@ void draw_layout() {
     info.setFont(font);
     title.setFont(font);
     info.setString("Use el \"LEFT CLICK\" para dibujar puntos y \"ENTER\" para unirlos. \nPuede modificar el K de KNN con \"+\" Y \"-\".\nCualquier bug o duda, comunicarse con jose.huby@utec.edu.pe\n\"F\" para activar/desactivar FUN MODE");
-    title.setString("R-Tree by Eren la Gaviota");
+    if (HILBERT_MODE) title.setString("R-Tree by Eren la Gaviota");
+    else title.setString("Hilbert-Tree by Eren la Gaviota");
     info.setPosition(sf::Vector2f(horizontal_offset/2, height - vertical_offset/2 + 10));
     title.setPosition(sf::Vector2f(horizontal_offset/2, 0));
     info.setColor(guiColor);
@@ -295,7 +351,7 @@ void hilbert(float n, float x, float y, float xi, float xj, float yi, float yj) 
 
 int main(int argc, char **argv){
     srand(time(NULL));
-    r.print();
+    hilbert_tree.print();
     std::vector<sf::Shape*> points;
 
     if (!music.openFromFile("music.wav"))
@@ -327,7 +383,7 @@ int main(int argc, char **argv){
                             points.push_back(shape);
                         }
                         else if (event.mouseButton.button == sf::Mouse::Right) {
-                            r.erase({event.mouseButton.x, event.mouseButton.y});
+                            hilbert_tree.erase({event.mouseButton.x, event.mouseButton.y});
                         }
                     }
                     break;
@@ -341,26 +397,36 @@ int main(int argc, char **argv){
                             FUN_MODE = !FUN_MODE;
                             break;
                         }
+                        case sf::Keyboard::H:
+                        {
+                            HILBERT_MODE = !HILBERT_MODE;
+                            break;
+                        }
                         case sf::Keyboard::Enter:
                         {
-                            decltype(r)::Polygon poly;
-                            poly.size = points.size();
+                            decltype(hilbert_tree)::Polygon poly_hilbert;
+                            decltype(r_tree)::Polygon poly_r;
+                            poly_hilbert.size = points.size();
+                            poly_r.size = points.size();
                             for(int i = 0; i < points.size(); i++)
                             {
                                 sf::Vector2f pos = points[i]->getPosition();
-                                poly.vertex[i][0] = pos.x;
-                                poly.vertex[i][1] = pos.y;
+                                poly_hilbert.vertex[i][0] = pos.x;
+                                poly_hilbert.vertex[i][1] = pos.y;
+                                poly_r.vertex[i][0] = pos.x;
+                                poly_r.vertex[i][1] = pos.y;
                             }
-                            get_z_index(poly);
-                            r.insert(poly);
-                            r.print();
+                            get_z_index(poly_hilbert);
+                            hilbert_tree.insert(poly_hilbert);
+                            r_tree.insert(poly_r);
+                            hilbert_tree.print();
                             points.clear();
                             break;
                         }
 
                         case sf::Keyboard::Add:
                         {
-                            if (variable < r.get_size())
+                            if (variable < hilbert_tree.get_size())
                                 variable++;
                             break;
                         }
@@ -385,14 +451,15 @@ int main(int argc, char **argv){
             window.draw(**it);
         }
 
-        r.for_each_polygon(draw_poly);
+        hilbert_tree.for_each_polygon(draw_poly);
 
         auto pos = sf::Mouse::getPosition(window);
 
         if (variable)
-            r.for_each_nearest(variable, {pos.x, pos.y}, draw_nearest);
+            hilbert_tree.for_each_nearest(variable, {pos.x, pos.y}, draw_nearest);
 
-        r.for_each_box(draw_box);
+        if (HILBERT_MODE) hilbert_tree.for_each_box(draw_box_hilbert);
+        else r_tree.for_each_box(draw_box_r);
 
         if ((sf::Mouse::getPosition(window).x > horizontal_offset/2 && sf::Mouse::getPosition(window).x < width-horizontal_offset/2
              && sf::Mouse::getPosition(window).y > vertical_offset/2 && sf::Mouse::getPosition(window).y < height-vertical_offset/2)) {
