@@ -545,18 +545,13 @@ void RTree::testOverlappingHelper(Vec2 const& testPoint, Node& current, double& 
 {
 	int options = 0;
 	for (auto& mbb : current.regions) {
-		options += isInside(testPoint, mbb);
+		if (isInside(testPoint, mbb)) {
+			options = 1;
+			if (current.leaf) counter += 1;
+			else testOverlappingHelper(testPoint, *((Node*)(mbb.child)), counter);
+		} 
 	}
-	if (options == 0) {
-		counter += 1;
-		return;
-	}
-	if (!(current.leaf)) {
-		counter += options;
-		for (auto& mbb : current.regions) {
-			testOverlappingHelper(testPoint, *((Node*)(mbb.child)), counter);
-		}
-	}
+	counter += !options;
 }
 
 std::tuple<Node*, MBB*> RTree::pickRandom(Node& current)
